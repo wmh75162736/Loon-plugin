@@ -100,19 +100,43 @@
     doneJson(json, message);
   }
 
+  function isSharePage(url) {
+    return /^https?:\/\/(?:www\.123pan\.com\/s\/[0-9a-zA-Z=_\/-]+\.html|[0-9a-zA-Z-]+\.(?:mshare|share)\.123pan\.cn\/?(?:[?#].*)?)$/i.test(url);
+  }
+
   function cleanWebPage(html) {
     var style = "<style id=\"loon-123pan-ad-clean\">" +
       "[class*=\"advert\"],[id*=\"advert\"]," +
-      "[class*=\"banner\"],[id*=\"banner\"]," +
       "[class*=\"promotion\"],[id*=\"promotion\"]," +
-      "[class*=\"popup\"],[id*=\"popup\"]{display:none!important}" +
+      "[class*=\"popup\"],[id*=\"popup\"]," +
+      ".btn_reward,#banner_container," +
+      ".lHPtZcwKo8DO6XetRyBx:has(#banner_container)," +
+      "img[src*=\"bg_h5_banner_vip_\"]{display:none!important}" +
       "</style>";
-    var output = html.replace(/https?:\/\/statics\.123957\.com\/static-by-custom\/img\/app_ad_[^\"'<>\\\s]+/gi, "");
+    var runtime = "<script id=\"loon-123pan-ad-runtime\">(function(){" +
+      "function clean(){" +
+      "var nodes=document.querySelectorAll('.btn_reward,script[src*=\\\"pcwapad.min.js\\\"]');" +
+      "for(var i=0;i<nodes.length;i++){nodes[i].remove();}" +
+      "var banners=document.querySelectorAll('#banner_container');" +
+      "for(var j=0;j<banners.length;j++){var wrap=banners[j].closest('.lHPtZcwKo8DO6XetRyBx');(wrap||banners[j]).remove();}" +
+      "}" +
+      "clean();document.addEventListener('DOMContentLoaded',clean);" +
+      "setTimeout(clean,300);setTimeout(clean,1200);setTimeout(clean,2800);" +
+      "})();</script>";
+    var output = html
+      .replace(/<script\b[^>]*\bsrc=[\"'][^\"']*\/pcwapad\.min\.js[^\"']*[\"'][^>]*>\s*<\/script>/gi, "")
+      .replace(/https?:\/\/statics\.123957\.com\/static-by-custom\/img\/app_ad_[^\"'<>\\\s]+/gi, "");
 
     if (output.indexOf("loon-123pan-ad-clean") === -1) {
       output = /<\/head>/i.test(output)
         ? output.replace(/<\/head>/i, style + "</head>")
         : style + output;
+    }
+
+    if (output.indexOf("loon-123pan-ad-runtime") === -1) {
+      output = /<\/body>/i.test(output)
+        ? output.replace(/<\/body>/i, runtime + "</body>")
+        : output + runtime;
     }
 
     return output;
@@ -141,7 +165,7 @@
     return cleanEnvelope("已清空用户中心推广文案", { title: "", content: [] });
   }
 
-  if (/^https?:\/\/www\.123pan\.com\/s\/[0-9a-zA-Z=_\/\-]+\.html/i.test(url)) {
+  if (isSharePage(url)) {
     var page = cleanWebPage(body);
     if (page !== body) {
       log("已净化网页分享页广告层");
