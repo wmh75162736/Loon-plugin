@@ -17,7 +17,7 @@
 ## GitHub Raw 地址
 
 ```text
-https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20checkin/52frpCheckin-v1.js
+https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js
 ```
 
 ## 功能
