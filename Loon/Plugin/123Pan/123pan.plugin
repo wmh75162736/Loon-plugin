@@ -2,6 +2,7 @@
 #!desc=过滤123云盘App与网页分享页中的广告、开屏、插屏、活动弹窗、横幅和推广文案；不处理会员权益、下载限制、流量限制或下载鉴权。
 #!author=wmh75162736
 #!homepage=https://github.com/wmh75162736/Loon-plugin
+#!icon=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/123Pan/icon.png
 #!tag=123云盘,去广告,开屏广告,网页广告
 #!system=iOS
 
