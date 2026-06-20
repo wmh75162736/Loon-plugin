@@ -1,10 +1,20 @@
-# CarHome 去广告
+# 汽车之家去广告
 
 ## 更新信息
 
-- 当前版本：v1.2.2
+- 当前版本：v1
 - 更新日期：2026-06-20
 - 适用客户端：Loon（iOS）
+
+## 一键导入 Loon
+
+[一键添加到 Loon](https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubusercontent.com%2Fwmh75162736%2FLoon-plugin%2Frefs%2Fheads%2Fmain%2FLoon%2FPlugin%2FCarHome%2FCarHome.plugin)
+
+Raw 地址：
+
+```text
+https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/CarHome/CarHome.plugin
+```
 
 ## 文件
 
