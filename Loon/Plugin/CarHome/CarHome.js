@@ -38,6 +38,14 @@
     });
   }
 
+  function clearNestedLiveAdFields(value, depth) {
+    if (!value || typeof value !== "object" || depth > 6) return;
+    clearLiveAdFields(value);
+    Object.keys(value).forEach(function (key) {
+      clearNestedLiveAdFields(value[key], depth + 1);
+    });
+  }
+
   try {
     const payload = JSON.parse($response.body);
     const parsedUrl = new URL(url);
@@ -79,6 +87,11 @@
     if (/\/(?:cars\.app\.autohome\.com\.cn\/)?carstreaming\/selectcarportal\/(?:reclist|seriestopwithtagscard)/.test(url)) {
       // 保留原版的两条独立直播规则：直播浮窗与报价页直播内容。
       clearLiveAdFields(payload.result);
+    }
+
+    if (/\/carstreaming\/seriessummary\/(?:operatecardinfo|tabcard)/.test(url)) {
+      // 当前版本的报价/车系详情页已迁移到该接口，直播字段可能位于嵌套卡片中。
+      clearNestedLiveAdFields(payload.result, 0);
     }
 
     if (/\/car_v\d+(?:\.\d+){2}\/indexpage\/reclist/.test(url)) {
