@@ -1,7 +1,90 @@
 /*
-52FRP Loon 自动签到脚本 v1
+52FRP Loon 自动签到脚本 v1.1
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+插件用途
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+本脚本用于在 Loon 中实现 52FRP 每日自动签到。
+
+主要功能：
+1. 每日定时检查 52FRP 签到状态
+2. 未签到时自动请求签到接口
+3. 已签到时直接输出简洁日志，避免重复签到
+4. 输出日期、签到状态、累计签到、连续签到、本次获得流量、累计获得流量
+5. 支持临时捕获登录态、Token、Cookie、真实签到接口
+6. 临时捕获规则默认关闭，避免影响 52FRP 登录页和用户中心页面
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Loon 插件配置
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+把下面内容复制到 Loon 插件配置里。
+脚本 Raw 地址：
+https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20checkin/52frpCheckin-v1.js
+
+#!name=52FRP 自动签到
+#!desc=52FRP 每日签到 + 临时捕获真实签到接口 v1.1
+#!author=ChatGPT
+#!homepage=https://www.52frp.com
+#!icon=https://www.52frp.com/favicon.ico
+
+[Script]
+# 临时捕获接口：默认关闭
+# 需要重新抓 Cookie / Token / 签到接口时：
+# 1. 先正常登录 52FRP
+# 2. 进入个人主页
+# 3. 手动开启“52FRP 临时捕获接口”
+# 4. 点击一次“立即签到”
+# 5. 捕获成功后关闭“52FRP 临时捕获接口”
+http-request ^https?:\/\/www\.52frp\.com\/api\/(?!.*(?:auth\/login|auth\/register|login|logout|captcha|verify|sms|password|reset)).* script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20checkin/52frpCheckin-v1.js, requires-body=true, timeout=10, tag=52FRP 临时捕获接口, enable=false
+
+# 每日自动签到
+cron "10 8 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20checkin/52frpCheckin-v1.js, timeout=60, tag=52FRP 每日签到, enable=true
+
+[MITM]
+hostname = www.52frp.com
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+使用方式
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+首次使用：
+1. 导入脚本文件 52frpCheckin-v1.js
+2. 导入上方 Loon 插件配置
+3. 保持“52FRP 临时捕获接口”为关闭
+4. 打开 52FRP 网站并正常登录
+5. 登录后进入个人主页
+6. 手动开启“52FRP 临时捕获接口”
+7. 点击一次“立即签到”
+8. 出现“签到接口已捕获”后关闭“52FRP 临时捕获接口”
+
+日常使用：
+- 只开启“52FRP 每日签到”
+- 保持“52FRP 临时捕获接口”关闭
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+日志显示格式
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+运行后会尽量显示为：
+
+2026 年 6 月 20 日
+今日已签到
+累计签到：2天
+连续签到：2天
+本次获得：302.68MB
+累计获得：788.61MB
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+注意事项
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. 52FRP 登录页包含前端路由和验证流程，不建议长期启用临时捕获接口。
+2. 临时捕获接口只在需要重新获取 Cookie、Token 或签到接口时开启。
+3. 捕获成功后请关闭临时捕获接口，避免影响网页访问。
+4. 如果提示登录态失效或“签到未成功”，请重新登录后再开启临时捕获接口重新捕获。
+5. 本脚本只用于个人账号的正常签到请求，不包含验证码绕过、破解登录或异常请求逻辑。
 */
 
 const APP_NAME = "52FRP 自动签到";
@@ -335,6 +418,12 @@ function saveFullSignRequest(headers, body) {
   }
 }
 
+function logCapturedSignRequest(method, contentType, body) {
+  const type = contentType || "未设置";
+  const bodySize = String(body || "").length;
+  console.log(`已记录真实签到请求：${method}，Content-Type=${type}，请求体长度=${bodySize}`);
+}
+
 function saveAuthHeaders(headers) {
   const cookie = getHeader(headers, "Cookie");
   const ua = getHeader(headers, "User-Agent");
@@ -458,6 +547,7 @@ function handleRequest() {
   writeStore("sign_method", method);
   writeStore("sign_content_type", contentType || "");
   saveFullSignRequest(headers, body);
+  logCapturedSignRequest(method, contentType, body);
 
   notify(APP_NAME, "签到接口已捕获", `${method} ${url}`);
 
@@ -605,19 +695,6 @@ function isAlreadySignedText(text) {
   return /今日已签到|已经签到|已签到|重复签到|请勿重复|明天再来|今日已领取|已领取/i.test(all);
 }
 
-function isMaybeAlreadySignedFail(text) {
-  const json = safeJsonParse(text);
-  const msg = getJsonMessage(json);
-  const biz = Number(getBusinessStatus(json));
-  const all = `${stringifyForJudge(text)} ${msg}`;
-
-  if (biz === 400 && /签到失败，请稍后重试/i.test(all)) {
-    return true;
-  }
-
-  return /签到失败，请稍后重试/i.test(all);
-}
-
 function isLoginExpired(text, status) {
   if (status === 401 || status === 403) return true;
 
@@ -649,13 +726,6 @@ function classifyResult(text, httpStatus) {
     return {
       state: "already",
       title: "今日已签到"
-    };
-  }
-
-  if (isMaybeAlreadySignedFail(text)) {
-    return {
-      state: "maybe_already",
-      title: "今日可能已签到"
     };
   }
 
@@ -718,10 +788,12 @@ async function runCheckin() {
 
   let headers = buildRequestHeaders();
 
+  // 仅使用真实签到请求捕获到的 Content-Type。空 POST 不应伪装为 JSON 请求。
   if (signContentType) {
     setHeader(headers, "Content-Type", signContentType);
-  } else if (String(signMethod).toUpperCase() === "POST") {
-    setHeader(headers, "Content-Type", "application/json;charset=UTF-8");
+  } else {
+    delete headers["Content-Type"];
+    delete headers["content-type"];
   }
 
   console.log("先检查签到状态...");
@@ -747,8 +819,8 @@ async function runCheckin() {
     timeout: 30000
   };
 
-  if (String(signMethod).toUpperCase() === "POST") {
-    options.body = signBody || "";
+  if (String(signMethod).toUpperCase() === "POST" && signBody) {
+    options.body = signBody;
   }
 
   console.log(`开始签到：${signMethod} ${signUrl}`);
@@ -791,11 +863,16 @@ async function runCheckin() {
     }
   }
 
+  const failureHint = classified.state === "business_fail" && res.status === 400
+    ? "服务端未确认签到成功。请重新开启临时捕获接口，在网页点击一次“立即签到”后关闭，再运行脚本。"
+    : "";
+
   const fallback = [
     formatDate(new Date()),
     classified.title,
-    cleanText(res.data)
-  ].join("\n");
+    cleanText(res.data),
+    failureHint
+  ].filter(Boolean).join("\n");
 
   writeStore("last_result", fallback);
   notify(APP_NAME, classified.title, fallback);

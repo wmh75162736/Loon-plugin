@@ -3,7 +3,7 @@
 ## 生成信息
 
 - 生成时间：2026-06-20 13:38:30（UTC+09:00）
-- 脚本版本：v1
+- 脚本版本：v1.1
 - 脚本路径：`loon/js/52frp checkin/52frpCheckin-v1.js`
 - 适用客户端：Loon（iOS）
 
@@ -17,7 +17,7 @@
 ## GitHub Raw 地址
 
 ```text
-https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js
+https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20checkin/52frpCheckin-v1.js
 ```
 
 ## 功能
@@ -35,7 +35,7 @@ https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/J
 
 ```ini
 #!name=52FRP 自动签到
-#!desc=52FRP 每日签到 + 临时捕获真实签到接口 v1
+#!desc=52FRP 每日签到 + 临时捕获真实签到接口 v1.1
 #!author=ChatGPT
 #!homepage=https://www.52frp.com
 #!icon=https://www.52frp.com/favicon.ico
@@ -65,7 +65,7 @@ hostname = www.52frp.com
 
 - 只需开启“52FRP 每日签到”。
 - “52FRP 临时捕获接口”必须保持关闭。
-- 如果收到“未保存登录态”或“登录态可能失效”，重新执行一次“首次使用”的第 3 至第 6 步。
+- 如果收到“未保存登录态”、“登录态可能失效”或“签到未成功”，重新执行一次“首次使用”的第 3 至第 6 步。
 
 ## 日志示例
 
