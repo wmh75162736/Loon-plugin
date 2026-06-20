@@ -3,7 +3,7 @@
 ## 生成信息
 
 - 生成时间：2026-06-20 13:38:30（UTC+09:00）
-- 脚本版本：v1.1
+- 脚本版本：v1.2
 - 脚本路径：`loon/js/52frp checkin/52frpCheckin-v1.js`
 - 适用客户端：Loon（iOS）
 
@@ -17,7 +17,7 @@
 ## GitHub Raw 地址
 
 ```text
-https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20checkin/52frpCheckin-v1.js
+https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js
 ```
 
 ## 功能
@@ -26,6 +26,7 @@ https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20c
 - 未签到时请求已捕获的真实签到接口。
 - 已签到时不重复提交，输出简洁结果。
 - 记录 Cookie、Token、请求头和真实签到接口，登录态失效后可重新捕获。
+- 自动合并同名请求头，避免发送重复的 Origin、Referer、Accept 等字段。
 - 日志显示日期、签到状态、累计签到、连续签到、本次获得流量和累计获得流量。
 - 临时捕获规则默认关闭，避免长期影响登录页和用户中心。
 
@@ -35,17 +36,17 @@ https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20c
 
 ```ini
 #!name=52FRP 自动签到
-#!desc=52FRP 每日签到 + 临时捕获真实签到接口 v1.1
+#!desc=52FRP 每日签到 + 临时捕获真实签到接口 v1.2
 #!author=ChatGPT
 #!homepage=https://www.52frp.com
 #!icon=https://www.52frp.com/favicon.ico
 
 [Script]
 # 临时捕获接口：默认关闭；仅在首次保存登录态或登录态失效后开启。
-http-request ^https?:\/\/www\.52frp\.com\/api\/(?!.*(?:auth\/login|auth\/register|login|logout|captcha|verify|sms|password|reset)).* script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20checkin/52frpCheckin-v1.js, requires-body=true, timeout=10, tag=52FRP 临时捕获接口, enable=false
+http-request ^https?:\/\/www\.52frp\.com\/api\/(?!.*(?:auth\/login|auth\/register|login|logout|captcha|verify|sms|password|reset)).* script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, requires-body=true, timeout=10, tag=52FRP 临时捕获接口, enable=false
 
 # 每日自动签到：每天 08:10 运行。
-cron "10 8 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20checkin/52frpCheckin-v1.js, timeout=60, tag=52FRP 每日签到, enable=true
+cron "10 8 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, timeout=60, tag=52FRP 每日签到, enable=true
 
 [MITM]
 hostname = www.52frp.com

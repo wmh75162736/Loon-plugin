@@ -1,5 +1,5 @@
 /*
-52FRP Loon 自动签到脚本 v1.1
+52FRP Loon 自动签到脚本 v1.2
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 插件用途
@@ -21,10 +21,10 @@ Loon 插件配置
 
 把下面内容复制到 Loon 插件配置里。
 脚本 Raw 地址：
-https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20checkin/52frpCheckin-v1.js
+https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js
 
 #!name=52FRP 自动签到
-#!desc=52FRP 每日签到 + 临时捕获真实签到接口 v1.1
+#!desc=52FRP 每日签到 + 临时捕获真实签到接口 v1.2
 #!author=ChatGPT
 #!homepage=https://www.52frp.com
 #!icon=https://www.52frp.com/favicon.ico
@@ -37,10 +37,10 @@ https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20c
 # 3. 手动开启“52FRP 临时捕获接口”
 # 4. 点击一次“立即签到”
 # 5. 捕获成功后关闭“52FRP 临时捕获接口”
-http-request ^https?:\/\/www\.52frp\.com\/api\/(?!.*(?:auth\/login|auth\/register|login|logout|captcha|verify|sms|password|reset)).* script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20checkin/52frpCheckin-v1.js, requires-body=true, timeout=10, tag=52FRP 临时捕获接口, enable=false
+http-request ^https?:\/\/www\.52frp\.com\/api\/(?!.*(?:auth\/login|auth\/register|login|logout|captcha|verify|sms|password|reset)).* script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, requires-body=true, timeout=10, tag=52FRP 临时捕获接口, enable=false
 
 # 每日自动签到
-cron "10 8 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/loon/js/52frp%20checkin/52frpCheckin-v1.js, timeout=60, tag=52FRP 每日签到, enable=true
+cron "10 8 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, timeout=60, tag=52FRP 每日签到, enable=true
 
 [MITM]
 hostname = www.52frp.com
@@ -85,6 +85,7 @@ hostname = www.52frp.com
 3. 捕获成功后请关闭临时捕获接口，避免影响网页访问。
 4. 如果提示登录态失效或“签到未成功”，请重新登录后再开启临时捕获接口重新捕获。
 5. 本脚本只用于个人账号的正常签到请求，不包含验证码绕过、破解登录或异常请求逻辑。
+6. v1.2 会合并同名请求头，避免 Origin、Referer、Accept 等字段重复发送。
 */
 
 const APP_NAME = "52FRP 自动签到";
@@ -174,6 +175,34 @@ function setHeader(headers, name, value) {
   }
 
   headers[name] = value;
+}
+
+function mergeHeaders(base, override) {
+  const merged = Object.assign({}, base || {});
+
+  for (const name in override || {}) {
+    const target = String(name).toLowerCase();
+
+    for (const existing in merged) {
+      if (String(existing).toLowerCase() === target) {
+        delete merged[existing];
+      }
+    }
+
+    merged[name] = override[name];
+  }
+
+  return merged;
+}
+
+function removeHeader(headers, name) {
+  const target = String(name).toLowerCase();
+
+  for (const existing in headers) {
+    if (String(existing).toLowerCase() === target) {
+      delete headers[existing];
+    }
+  }
 }
 
 function safeJsonParse(text) {
@@ -593,19 +622,15 @@ function buildRequestHeaders() {
   const savedHeaders = safeJsonParse(savedHeadersText);
 
   if (savedHeaders && typeof savedHeaders === "object") {
-    headers = Object.assign(headers, sanitizeHeaders(savedHeaders));
+    headers = mergeHeaders(headers, sanitizeHeaders(savedHeaders));
   }
 
   headers = addStoredAuthHeaders(headers);
 
-  delete headers["Host"];
-  delete headers["host"];
-  delete headers["Content-Length"];
-  delete headers["content-length"];
-  delete headers["Accept-Encoding"];
-  delete headers["accept-encoding"];
-  delete headers["Connection"];
-  delete headers["connection"];
+  removeHeader(headers, "Host");
+  removeHeader(headers, "Content-Length");
+  removeHeader(headers, "Accept-Encoding");
+  removeHeader(headers, "Connection");
 
   return headers;
 }
@@ -792,8 +817,7 @@ async function runCheckin() {
   if (signContentType) {
     setHeader(headers, "Content-Type", signContentType);
   } else {
-    delete headers["Content-Type"];
-    delete headers["content-type"];
+    removeHeader(headers, "Content-Type");
   }
 
   console.log("先检查签到状态...");
