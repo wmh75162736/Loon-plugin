@@ -1,0 +1,31 @@
+#!name=123云盘去广告
+#!desc=过滤123云盘App与网页分享页中的广告、开屏、插屏、活动弹窗、横幅和推广文案；不处理会员权益、下载限制、流量限制或下载鉴权。
+#!author=wmh75162736
+#!homepage=https://github.com/wmh75162736/Loon-plugin
+#!tag=123云盘,去广告,开屏广告,网页广告
+#!system=iOS
+
+[Rewrite]
+# 123云盘自有广告图片，例如 app_ad_vip、app_ad_wechat 等。
+^https?:\/\/statics\.123957\.com\/static-by-custom\/img\/app_ad_[^?\s]+\.(?:png|jpg|jpeg|webp)(?:\?.*)?$ reject-img
+
+[Script]
+# App 广告与通用配置
+http-response ^https?:\/\/api\.123278\.com\/api\/config\/get(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/123Pan/123pan-ad.js, requires-body=true, timeout=10, tag=123云盘-广告配置
+
+# App 配置中的广告与推广入口
+http-response ^https?:\/\/api\.123278\.com\/api\/app\/config\/get(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/123Pan/123pan-ad.js, requires-body=true, timeout=10, tag=123云盘-App配置
+
+# App 广告资源
+http-response ^https?:\/\/api\.123278\.com\/api\/v2\/advert_resource\/get(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/123Pan/123pan-ad.js, requires-body=true, timeout=10, tag=123云盘-广告资源
+
+# App 活动弹窗与公告推广
+http-response ^https?:\/\/api\.123278\.com\/api\/v2\/activity\/pop\/is_show(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/123Pan/123pan-ad.js, requires-body=true, timeout=10, tag=123云盘-活动弹窗
+http-response ^https?:\/\/api\.123278\.com\/api\/notice\/announcement(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/123Pan/123pan-ad.js, requires-body=true, timeout=10, tag=123云盘-公告推广
+
+# 用户中心推广文案与网页分享页广告层
+http-response ^https?:\/\/api\.123278\.com\/api\/restful\/goapi\/v1\/user\/center\/text(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/123Pan/123pan-ad.js, requires-body=true, timeout=10, tag=123云盘-用户中心推广
+http-response ^https?:\/\/www\.123pan\.com\/s\/[0-9a-zA-Z=_\/\-]+\.html(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/123Pan/123pan-ad.js, requires-body=true, timeout=10, tag=123云盘-网页广告
+
+[MITM]
+hostname = api.123278.com, statics.123957.com, www.123pan.com
