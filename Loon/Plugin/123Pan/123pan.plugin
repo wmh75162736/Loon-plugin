@@ -1,5 +1,5 @@
 #!name=123云盘去广告
-#!desc=过滤123云盘App与网页分享页中的广告、开屏、插屏、活动弹窗、横幅和推广文案；不处理会员权益、下载限制、流量限制或下载鉴权。
+#!desc=过滤123云盘App与网页分享页中的广告、开屏、插屏、活动弹窗、横幅和推广文案；解除网页端流量1G下载限制（请单文件下载，不要文件夹或多文件下载）。
 #!author=wmh75162736
 #!homepage=https://github.com/wmh75162736/Loon-plugin
 #!icon=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/123Pan/icon.png
