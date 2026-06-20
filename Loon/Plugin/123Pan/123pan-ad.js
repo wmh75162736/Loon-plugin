@@ -102,7 +102,7 @@
   }
 
   function isSharePage(url) {
-    return /^https?:\/\/(?:www\.123pan\.(?:com|cn)\/(?:s|123pan)\/[^?#]+(?:\?[^#]*)?|[0-9a-zA-Z-]+\.(?:mshare|share)\.123pan\.cn(?:\/[^\s]*)?)$/i.test(url);
+    return /^https?:\/\/(?:www\.(?:123pan\.(?:com|cn)|123865\.com|123912\.com)\/(?:s|123pan)\/[^?#]+(?:\?[^#]*)?|[0-9a-zA-Z-]+\.(?:mshare|share)\.(?:123pan\.(?:com|cn)|123865\.com|123912\.com)(?:\/[^\s]*)?)$/i.test(url);
   }
 
   function isHtmlResponse() {
