@@ -102,7 +102,22 @@
   }
 
   function isSharePage(url) {
-    return /^https?:\/\/(?:www\.123pan\.com\/s\/[0-9a-zA-Z=_\/-]+\.html|[0-9a-zA-Z-]+\.(?:mshare|share)\.123pan\.cn\/?(?:[?#].*)?)$/i.test(url);
+    return /^https?:\/\/(?:www\.123pan\.com\/s\/[^?#]+(?:\?[^#]*)?|[0-9a-zA-Z-]+\.(?:mshare|share)\.123pan\.cn(?:\/[^\s]*)?)$/i.test(url);
+  }
+
+  function isHtmlResponse() {
+    var contentType = "";
+    var responseHeaders = ($response && $response.headers) || {};
+
+    Object.keys(responseHeaders).some(function (name) {
+      if (String(name).toLowerCase() === "content-type") {
+        contentType = String(responseHeaders[name] || "");
+        return true;
+      }
+      return false;
+    });
+
+    return !contentType || /text\/html|application\/xhtml\+xml/i.test(contentType);
   }
 
   function cleanWebPage(html) {
@@ -166,7 +181,7 @@
     return cleanEnvelope("已清空用户中心推广文案", { title: "", content: [] });
   }
 
-  if (isSharePage(url)) {
+  if (isSharePage(url) && isHtmlResponse()) {
     var page = cleanWebPage(body);
     if (page !== body) {
       log("已净化网页分享页广告层");
