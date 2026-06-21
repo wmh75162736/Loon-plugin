@@ -1,5 +1,5 @@
 /*
-52FRP Loon 签到令牌测试脚本 v1.3 测试版
+52FRP Loon 签到令牌测试脚本 v1.4 测试版
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 插件用途
@@ -9,9 +9,10 @@
 
 主要功能：
 1. 无论当天是否已签到，均请求新的 slider_token
-2. 验证令牌接口是否返回有效结果
-3. 不会调用签到接口，不改变任何签到或流量数据
-4. 支持临时捕获登录态、Token、Cookie
+2. 连续请求两次并比较令牌是否不同
+3. 请求附带随机时间戳和禁止缓存头，排除客户端与 CDN 缓存
+4. 不会调用签到接口，不改变任何签到或流量数据
+5. 支持临时捕获登录态、Token、Cookie
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Loon 插件配置
@@ -22,7 +23,7 @@ Loon 插件配置
 https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.3-test.js
 
 #!name=52FRP 签到令牌测试版
-#!desc=测试版：始终获取新的签到令牌，但绝不提交签到请求
+#!desc=测试版：双请求验证新签到令牌，绝不提交签到请求 v1.4
 #!author=ChatGPT
 #!homepage=https://www.52frp.com
 #!icon=https://www.52frp.com/favicon.ico
@@ -38,7 +39,7 @@ https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/J
 http-request ^https?:\/\/www\.52frp\.com\/api\/(?!.*(?:auth\/login|auth\/register|login|logout|captcha|verify|sms|password|reset)).* script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.3-test.js, argument=token-test, timeout=10, tag=52FRP 临时捕获登录态, enable=false
 
 # 签到令牌测试：默认关闭，仅用于手动运行。
-# 无论今天是否已签到，都会请求新的 slider_token 并检查响应；不会提交签到请求。
+# 无论今天是否已签到，都会连续请求两次 slider_token 并比较；不会提交签到请求。
 cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.3-test.js, argument=token-test, timeout=60, tag=52FRP 签到令牌测试, enable=false
 
 [MITM]
@@ -70,7 +71,8 @@ hostname = www.52frp.com
 
 2026 年 6 月 20 日
 今日已签到
-已成功获取本次 slider_token
+已成功获取两次 slider_token
+两次令牌不同，确认服务端重新签发
 测试模式：未提交签到请求
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -83,6 +85,7 @@ hostname = www.52frp.com
 4. 如果提示登录态失效，请重新登录后再开启临时捕获登录态重新捕获。
 5. 本脚本只用于个人账号的正常签到请求，不包含验证码绕过、破解登录或异常请求逻辑。
 6. 本测试版强制启用测试模式，即使未传入 argument 也不会执行签到。
+7. 测试不会显示令牌原文，只输出安全的比较结论。
 */
 
 const APP_NAME = "52FRP 签到令牌测试版";
@@ -807,9 +810,14 @@ function getSliderToken(text) {
 async function fetchSliderToken(headers) {
   const tokenHeaders = Object.assign({}, headers);
   removeHeader(tokenHeaders, "Content-Type");
+  setHeader(tokenHeaders, "Cache-Control", "no-cache, no-store, max-age=0");
+  setHeader(tokenHeaders, "Pragma", "no-cache");
+
+  const separator = SLIDER_TOKEN_URL.includes("?") ? "&" : "?";
+  const cacheBust = `${separator}_token_test=${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
   return request({
-    url: SLIDER_TOKEN_URL,
+    url: `${SLIDER_TOKEN_URL}${cacheBust}`,
     method: "GET",
     headers: tokenHeaders,
     timeout: 30000
@@ -886,10 +894,42 @@ async function runCheckin() {
   }
 
   if (IS_TOKEN_TEST) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const secondTokenRes = await fetchSliderToken(headers);
+
+    if (secondTokenRes.error || isLoginExpired(secondTokenRes.data, secondTokenRes.status)) {
+      notify(
+        APP_NAME,
+        "第二次令牌获取失败",
+        secondTokenRes.error ? String(secondTokenRes.error) : cleanText(secondTokenRes.data)
+      );
+      done({});
+      return;
+    }
+
+    const secondSliderToken = getSliderToken(secondTokenRes.data);
+
+    if (!secondSliderToken) {
+      notify(
+        APP_NAME,
+        "第二次令牌获取失败",
+        cleanText(secondTokenRes.data) || `HTTP=${secondTokenRes.status}`
+      );
+      done({});
+      return;
+    }
+
+    const cacheStatus = getHeader(secondTokenRes.headers, "x-site-cache-status") || "未返回";
+    const tokenChanged = sliderToken !== secondSliderToken;
+    const comparison = tokenChanged
+      ? "两次令牌不同，确认服务端重新签发"
+      : "两次令牌相同，服务端可能复用有效令牌";
     const summary = [
       formatDate(new Date()),
       signState,
-      "已成功获取本次 slider_token",
+      "已成功获取两次 slider_token",
+      comparison,
+      `缓存状态：${cacheStatus}`,
       "测试模式：未提交签到请求"
     ].join("\n");
 
