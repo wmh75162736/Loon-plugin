@@ -1,5 +1,5 @@
 /*
-52FRP Loon 自动签到脚本 v1.2
+52FRP Loon 自动签到脚本 v1.3
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 插件用途
@@ -12,8 +12,9 @@
 2. 未签到时自动请求签到接口
 3. 已签到时直接输出简洁日志，避免重复签到
 4. 输出日期、签到状态、累计签到、连续签到、本次获得流量、累计获得流量
-5. 支持临时捕获登录态、Token、Cookie、真实签到接口
-6. 临时捕获规则默认关闭，避免影响 52FRP 登录页和用户中心页面
+5. 支持临时捕获登录态、Token、Cookie
+6. 每次签到前自动获取新的签到令牌，不复用旧令牌
+7. 临时捕获规则默认关闭，避免长期干预 52FRP 页面请求
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Loon 插件配置
@@ -24,20 +25,20 @@ Loon 插件配置
 https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js
 
 #!name=52FRP 自动签到
-#!desc=52FRP 每日签到 + 临时捕获真实签到接口 v1.2
+#!desc=52FRP 每日签到 + 自动获取临时签到令牌 v1.3
 #!author=ChatGPT
 #!homepage=https://www.52frp.com
 #!icon=https://www.52frp.com/favicon.ico
 
 [Script]
-# 临时捕获接口：默认关闭
-# 需要重新抓 Cookie / Token / 签到接口时：
+# 临时捕获登录态：默认关闭
+# 需要重新抓 Cookie / Token 时：
 # 1. 先正常登录 52FRP
 # 2. 进入个人主页
-# 3. 手动开启“52FRP 临时捕获接口”
-# 4. 点击一次“立即签到”
-# 5. 捕获成功后关闭“52FRP 临时捕获接口”
-http-request ^https?:\/\/www\.52frp\.com\/api\/(?!.*(?:auth\/login|auth\/register|login|logout|captcha|verify|sms|password|reset)).* script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, requires-body=true, timeout=10, tag=52FRP 临时捕获接口, enable=false
+# 3. 手动开启“52FRP 临时捕获登录态”
+# 4. 停留在个人主页，等待页面加载完成
+# 5. 出现“登录态已捕获”后关闭“52FRP 临时捕获登录态”
+http-request ^https?:\/\/www\.52frp\.com\/api\/(?!.*(?:auth\/login|auth\/register|login|logout|captcha|verify|sms|password|reset)).* script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, timeout=10, tag=52FRP 临时捕获登录态, enable=false
 
 # 每日自动签到
 cron "10 8 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, timeout=60, tag=52FRP 每日签到, enable=true
@@ -52,16 +53,16 @@ hostname = www.52frp.com
 首次使用：
 1. 导入脚本文件 52frpCheckin-v1.js
 2. 导入上方 Loon 插件配置
-3. 保持“52FRP 临时捕获接口”为关闭
+3. 保持“52FRP 临时捕获登录态”为关闭
 4. 打开 52FRP 网站并正常登录
 5. 登录后进入个人主页
-6. 手动开启“52FRP 临时捕获接口”
-7. 点击一次“立即签到”
-8. 出现“签到接口已捕获”后关闭“52FRP 临时捕获接口”
+6. 手动开启“52FRP 临时捕获登录态”
+7. 刷新个人主页并等待出现“登录态已捕获”
+8. 关闭“52FRP 临时捕获登录态”
 
 日常使用：
 - 只开启“52FRP 每日签到”
-- 保持“52FRP 临时捕获接口”关闭
+- 保持“52FRP 临时捕获登录态”关闭
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 日志显示格式
@@ -80,12 +81,12 @@ hostname = www.52frp.com
 注意事项
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. 52FRP 登录页包含前端路由和验证流程，不建议长期启用临时捕获接口。
-2. 临时捕获接口只在需要重新获取 Cookie、Token 或签到接口时开启。
-3. 捕获成功后请关闭临时捕获接口，避免影响网页访问。
-4. 如果提示登录态失效或“签到未成功”，请重新登录后再开启临时捕获接口重新捕获。
+1. 52FRP 登录页包含前端路由和验证流程，不建议长期启用临时捕获登录态。
+2. 临时捕获登录态只在需要重新获取 Cookie、Token 时开启。
+3. 捕获成功后请关闭临时捕获登录态，避免影响网页访问。
+4. 如果提示登录态失效，请重新登录后再开启临时捕获登录态重新捕获。
 5. 本脚本只用于个人账号的正常签到请求，不包含验证码绕过、破解登录或异常请求逻辑。
-6. v1.2 会合并同名请求头，避免 Origin、Referer、Accept 等字段重复发送。
+6. v1.3 会在每次签到前重新获取临时签到令牌，旧的签到请求体不会被复用。
 */
 
 const APP_NAME = "52FRP 自动签到";
@@ -93,11 +94,13 @@ const APP_NAME = "52FRP 自动签到";
 const USER_URL = "https://www.52frp.com/user/";
 const DEFAULT_SIGN_URL = "https://www.52frp.com/api/user/sign";
 const SIGN_INFO_URL = "https://www.52frp.com/api/user/sign/info";
+const SLIDER_TOKEN_URL = "https://www.52frp.com/api/user/slider-token";
 
 const PREFIX = "frp52_v10_";
 const LEGACY_PREFIXES = ["frp52_v19_", "frp52_v18_"];
 
 const INFO_NOTICE_INTERVAL = 5 * 60 * 1000;
+const AUTH_NOTICE_INTERVAL = 5 * 60 * 1000;
 
 function key(name) {
   return PREFIX + name;
@@ -288,12 +291,8 @@ function isSignedFromInfo(text) {
   const data = getInfoData(text);
   if (!data) return false;
 
-  return (
-    data.signed_today === true ||
-    data.signed_today === 1 ||
-    data.signed_today === "1" ||
-    String(data.signed_today).toLowerCase() === "true"
-  );
+  const value = data.signed_today !== undefined ? data.signed_today : data.signed;
+  return value === true || value === 1 || value === "1" || String(value).toLowerCase() === "true";
 }
 
 function buildSignSummary(infoText, statusText) {
@@ -403,11 +402,6 @@ function isRealSignUrl(url, method) {
   return patterns.some((reg) => reg.test(u));
 }
 
-function hasSensitiveBody(body) {
-  if (!body) return false;
-  return /password|passwd|pwd|captcha|verify|sms|code|login|username|email|account/i.test(String(body));
-}
-
 function sanitizeHeaders(headers) {
   const output = {};
 
@@ -436,15 +430,10 @@ function sanitizeHeaders(headers) {
   return output;
 }
 
-function saveFullSignRequest(headers, body) {
+function saveSignRequestHeaders(headers) {
   const safeHeaders = sanitizeHeaders(headers);
   writeStore("sign_headers_json", JSON.stringify(safeHeaders));
-
-  if (body && !hasSensitiveBody(body)) {
-    writeStore("sign_body", body);
-  } else {
-    writeStore("sign_body", "");
-  }
+  writeStore("sign_body", "");
 }
 
 function logCapturedSignRequest(method, contentType, body) {
@@ -463,8 +452,6 @@ function saveAuthHeaders(headers) {
   const satoken = getHeader(headers, "satoken");
   const csrf = getHeader(headers, "X-CSRF-TOKEN");
   const xsrf = getHeader(headers, "X-XSRF-TOKEN");
-  const contentType = getHeader(headers, "Content-Type");
-
   let saved = false;
 
   if (cookie && cookie.length > 10) {
@@ -511,10 +498,6 @@ function saveAuthHeaders(headers) {
     saved = true;
   }
 
-  if (contentType) {
-    writeStore("sign_content_type", contentType);
-  }
-
   if (saved) {
     console.log("已保存登录请求头");
   }
@@ -528,6 +511,18 @@ function shouldNotifyInfo() {
 
   if (now - last > INFO_NOTICE_INTERVAL) {
     writeStore("info_notice_time", String(now));
+    return true;
+  }
+
+  return false;
+}
+
+function shouldNotifyAuth() {
+  const now = Date.now();
+  const last = Number(readStore("auth_notice_time") || 0);
+
+  if (now - last > AUTH_NOTICE_INTERVAL) {
+    writeStore("auth_notice_time", String(now));
     return true;
   }
 
@@ -550,14 +545,22 @@ function handleRequest() {
     return;
   }
 
-  saveAuthHeaders(headers);
+  const authCaptured = saveAuthHeaders(headers);
+
+  if (authCaptured && shouldNotifyAuth()) {
+    notify(
+      APP_NAME,
+      "登录态已捕获",
+      "已保存当前会话凭据，可关闭“52FRP 临时捕获登录态”"
+    );
+  }
 
   if (isSignInfoUrl(url)) {
     if (shouldNotifyInfo()) {
       notify(
         APP_NAME,
         "签到信息接口已记录",
-        "这是状态接口，不是签到接口；点击“立即签到”时会捕获真正接口"
+        "这是状态接口；当前登录态已自动保存，不需要点击“立即签到”"
       );
     }
 
@@ -575,7 +578,7 @@ function handleRequest() {
   writeStore("sign_url", url);
   writeStore("sign_method", method);
   writeStore("sign_content_type", contentType || "");
-  saveFullSignRequest(headers, body);
+  saveSignRequestHeaders(headers);
   logCapturedSignRequest(method, contentType, body);
 
   notify(APP_NAME, "签到接口已捕获", `${method} ${url}`);
@@ -790,35 +793,45 @@ async function checkSignInfo(headers) {
   return res;
 }
 
+function getSliderToken(text) {
+  const json = safeJsonParse(text);
+  if (!json || typeof json !== "object") return "";
+
+  const status = Number(json.status !== undefined ? json.status : json.code);
+  const success = json.success === true || status === 200;
+  const data = json.data && typeof json.data === "object" ? json.data : json;
+
+  if (!success || !data) return "";
+
+  const token = data.token !== undefined ? data.token : data.slider_token;
+  return typeof token === "string" && token.length > 0 ? token : "";
+}
+
+async function fetchSliderToken(headers) {
+  const tokenHeaders = Object.assign({}, headers);
+  removeHeader(tokenHeaders, "Content-Type");
+
+  return request({
+    url: SLIDER_TOKEN_URL,
+    method: "GET",
+    headers: tokenHeaders,
+    timeout: 30000
+  });
+}
+
 async function runCheckin() {
   if (!hasAnyLoginState()) {
     notify(
       APP_NAME,
       "未保存登录态",
-      "请登录 52FRP 后开启“临时捕获接口”，再点击一次签到"
+      "请登录 52FRP 后开启“52FRP 临时捕获登录态”，进入个人主页并刷新一次"
     );
     done({});
     return;
   }
 
-  let signUrl = readStore("sign_url");
-  let signMethod = readStore("sign_method") || "POST";
-  const signContentType = readStore("sign_content_type");
-  const signBody = readStore("sign_body");
-
-  if (!signUrl || !/^https?:\/\//i.test(signUrl)) {
-    signUrl = DEFAULT_SIGN_URL;
-    signMethod = "POST";
-  }
-
   let headers = buildRequestHeaders();
-
-  // 仅使用真实签到请求捕获到的 Content-Type。空 POST 不应伪装为 JSON 请求。
-  if (signContentType) {
-    setHeader(headers, "Content-Type", signContentType);
-  } else {
-    removeHeader(headers, "Content-Type");
-  }
+  setHeader(headers, "Content-Type", "application/json");
 
   console.log("先检查签到状态...");
 
@@ -836,18 +849,47 @@ async function runCheckin() {
     console.log(`签到状态检查失败，继续尝试签到。HTTP=${infoRes.status}`);
   }
 
-  const options = {
-    url: signUrl,
-    method: signMethod,
-    headers,
-    timeout: 30000
-  };
+  console.log("获取本次签到令牌...");
 
-  if (String(signMethod).toUpperCase() === "POST" && signBody) {
-    options.body = signBody;
+  const tokenRes = await fetchSliderToken(headers);
+
+  if (tokenRes.error) {
+    notify(APP_NAME, "签到令牌获取失败", String(tokenRes.error));
+    done({});
+    return;
   }
 
-  console.log(`开始签到：${signMethod} ${signUrl}`);
+  if (isLoginExpired(tokenRes.data, tokenRes.status)) {
+    notify(
+      APP_NAME,
+      "登录态可能失效",
+      "请重新登录后开启“52FRP 临时捕获登录态”，进入个人主页完成会话捕获"
+    );
+    done({});
+    return;
+  }
+
+  const sliderToken = getSliderToken(tokenRes.data);
+
+  if (!sliderToken) {
+    notify(
+      APP_NAME,
+      "签到令牌获取失败",
+      [formatDate(new Date()), cleanText(tokenRes.data) || `HTTP=${tokenRes.status}`].join("\n")
+    );
+    done({});
+    return;
+  }
+
+  const options = {
+    url: DEFAULT_SIGN_URL,
+    method: "POST",
+    headers,
+    timeout: 30000,
+    body: JSON.stringify({ slider_token: sliderToken })
+  };
+
+  console.log("开始签到：POST /api/user/sign");
 
   const res = await request(options);
 
@@ -863,7 +905,7 @@ async function runCheckin() {
     notify(
       APP_NAME,
       "登录态可能失效",
-      "请重新登录后开启临时捕获接口，再点击一次签到"
+      "请重新登录后开启“52FRP 临时捕获登录态”，进入个人主页完成会话捕获"
     );
     done({});
     return;
@@ -888,7 +930,7 @@ async function runCheckin() {
   }
 
   const failureHint = classified.state === "business_fail" && res.status === 400
-    ? "服务端未确认签到成功。请重新开启临时捕获接口，在网页点击一次“立即签到”后关闭，再运行脚本。"
+    ? "服务端未确认签到成功。请重新登录后刷新个人主页，重新捕获登录态后再运行脚本。"
     : "";
 
   const fallback = [
