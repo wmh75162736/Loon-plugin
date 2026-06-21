@@ -1,17 +1,23 @@
 #!name=音乐去广告
-#!desc=QQ音乐、波点音乐去开屏/互动广告，保留QQ音乐常见广告分发与统计拦截
+#!desc=QQ音乐、波点音乐去开屏、互动广告及页面推广横幅
 #!author=ChatGPT
-#!version=1.1
+#!version=1.3
 #!date=2026-06-21
 #!loon_version=3.4.0(962)
 
 [URL Rewrite]
-# QQ音乐：当前开屏/互动广告配置接口
-^https?:\/\/c\.y\.qq\.com\/tips\/fcgi-bin\/fcg_get_advert\.fcg - reject-200
+# QQ音乐：抓包确认的广告接口会在 c.y、szc.y、c6.y 等主机间分流。
+^https?:\/\/(?:c|c\d+|szc)\.y\.qq\.com\/tips\/fcgi-bin\/fcg_get_advert\.fcg - reject-200
 
-# 波点音乐：启动开屏配置与兜底接口
-^https?:\/\/bd-api\.kuwo\.cn\/api\/popup\/start\/info - reject-200
-^https?:\/\/bd-api\.kuwo\.cn\/api\/popup\/start\/fallback - reject-200
+# QQ音乐：我的页推广横幅。
+^https?:\/\/(?:c|c\d+|szc)\.y\.qq\.com\/musichall\/fcgi-bin\/3g_get_mymusic_topbanner\.fcg - reject-200
+
+[Script]
+# QQ音乐：复用 musicu.fcg 通道时，仅拦截免费模式开屏/素材配置模块。
+QQ音乐免费模式配置 = type=http-request,pattern=^https?:\/\/(?:u6?|t)\.y\.qq\.com\/cgi-bin\/musicu?\.fcg,requires-body=1,script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/MusicAd/music-adblock.js
+
+# 波点音乐：返回空推广配置，避免 reject 空响应导致页面异常。
+波点音乐广告配置 = type=http-response,pattern=^https?:\/\/bd-(?:api|lv)\.kuwo\.cn\/api\/(?:popup\/(?:start|scene|mine)\/(?:info|fallback)|advert\/(?:free\/config|earning\/app\/config)|service\/banner\/positions),requires-body=1,script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/MusicAd/music-adblock.js
 
 [Rule]
 # QQ音乐：原有广告分发、点击及统计规则
@@ -28,4 +34,4 @@ DOMAIN,tmeadbak.y.qq.com,REJECT
 DOMAIN,tmeadquic.y.qq.com,REJECT
 
 [MITM]
-hostname = c.y.qq.com, bd-api.kuwo.cn
+hostname = c.y.qq.com, c6.y.qq.com, szc.y.qq.com, u.y.qq.com, u6.y.qq.com, t.y.qq.com, bd-api.kuwo.cn, bd-lv.kuwo.cn
