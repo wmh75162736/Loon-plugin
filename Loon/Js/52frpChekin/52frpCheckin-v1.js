@@ -1,5 +1,5 @@
 /*
-52FRP Loon 自动签到脚本 v1.3
+52FRP Loon 自动签到脚本 v1.4
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 插件用途
@@ -25,7 +25,7 @@ Loon 插件配置
 https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js
 
 #!name=52FRP 自动签到
-#!desc=52FRP 每日签到 + 自动获取临时签到令牌 v1.3
+#!desc=52FRP 每日签到 + 防缓存获取临时签到令牌 v1.4
 #!author=ChatGPT
 #!homepage=https://www.52frp.com
 #!icon=https://www.52frp.com/favicon.ico
@@ -42,6 +42,10 @@ http-request ^https?:\/\/www\.52frp\.com\/api\/(?!.*(?:auth\/login|auth\/registe
 
 # 每日自动签到
 cron "10 8 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, timeout=60, tag=52FRP 每日签到, enable=true
+
+# 签到令牌测试：默认关闭，仅用于手动运行。
+# 无论今天是否已签到，都会请求新的 slider_token 并检查响应；不会提交签到请求。
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, argument=token-test, timeout=60, tag=52FRP 签到令牌测试, enable=false
 
 [MITM]
 hostname = www.52frp.com
@@ -63,6 +67,10 @@ hostname = www.52frp.com
 日常使用：
 - 只开启“52FRP 每日签到”
 - 保持“52FRP 临时捕获登录态”关闭
+
+签到令牌测试：
+- 保持“52FRP 签到令牌测试”关闭，仅在 Loon 内手动运行。
+- 测试会请求新的签到令牌，但不会提交签到，不影响当天签到状态。
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 日志显示格式
@@ -86,10 +94,13 @@ hostname = www.52frp.com
 3. 捕获成功后请关闭临时捕获登录态，避免影响网页访问。
 4. 如果提示登录态失效，请重新登录后再开启临时捕获登录态重新捕获。
 5. 本脚本只用于个人账号的正常签到请求，不包含验证码绕过、破解登录或异常请求逻辑。
-6. v1.3 会在每次签到前重新获取临时签到令牌，旧的签到请求体不会被复用。
+6. v1.4 会在每次签到前以随机参数和禁用缓存头重新获取临时签到令牌，旧的签到请求体不会被复用。
+7. “52FRP 签到令牌测试”只验证令牌接口，不会执行签到。
 */
 
 const APP_NAME = "52FRP 自动签到";
+const SCRIPT_ARGUMENT = typeof $argument !== "undefined" ? String($argument || "") : "";
+const IS_TOKEN_TEST = /(?:^|[,&\s])(?:token-test|mode=token-test)(?:$|[,&\s])/i.test(SCRIPT_ARGUMENT);
 
 const USER_URL = "https://www.52frp.com/user/";
 const DEFAULT_SIGN_URL = "https://www.52frp.com/api/user/sign";
@@ -810,9 +821,14 @@ function getSliderToken(text) {
 async function fetchSliderToken(headers) {
   const tokenHeaders = Object.assign({}, headers);
   removeHeader(tokenHeaders, "Content-Type");
+  setHeader(tokenHeaders, "Cache-Control", "no-cache, no-store, max-age=0");
+  setHeader(tokenHeaders, "Pragma", "no-cache");
+
+  const separator = SLIDER_TOKEN_URL.includes("?") ? "&" : "?";
+  const cacheBust = `${separator}_slider_token=${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
   return request({
-    url: SLIDER_TOKEN_URL,
+    url: `${SLIDER_TOKEN_URL}${cacheBust}`,
     method: "GET",
     headers: tokenHeaders,
     timeout: 30000
@@ -832,6 +848,7 @@ async function runCheckin() {
 
   let headers = buildRequestHeaders();
   setHeader(headers, "Content-Type", "application/json");
+  let signState = "签到状态暂未确认";
 
   console.log("先检查签到状态...");
 
@@ -839,11 +856,17 @@ async function runCheckin() {
 
   if (!infoRes.error && infoRes.status >= 200 && infoRes.status < 400) {
     if (isSignedFromInfo(infoRes.data)) {
-      const summary = buildSignSummary(infoRes.data, "今日已签到");
-      writeStore("last_result", summary);
-      notify(APP_NAME, "今日已签到", summary);
-      done({});
-      return;
+      signState = "今日已签到";
+
+      if (!IS_TOKEN_TEST) {
+        const summary = buildSignSummary(infoRes.data, signState);
+        writeStore("last_result", summary);
+        notify(APP_NAME, signState, summary);
+        done({});
+        return;
+      }
+    } else {
+      signState = "今日未签到";
     }
   } else {
     console.log(`签到状态检查失败，继续尝试签到。HTTP=${infoRes.status}`);
@@ -877,6 +900,20 @@ async function runCheckin() {
       "签到令牌获取失败",
       [formatDate(new Date()), cleanText(tokenRes.data) || `HTTP=${tokenRes.status}`].join("\n")
     );
+    done({});
+    return;
+  }
+
+  if (IS_TOKEN_TEST) {
+    const summary = [
+      formatDate(new Date()),
+      signState,
+      "已成功获取本次 slider_token",
+      "测试模式：未提交签到请求"
+    ].join("\n");
+
+    writeStore("last_result", summary);
+    notify(APP_NAME, "签到令牌测试成功", summary);
     done({});
     return;
   }
@@ -930,7 +967,7 @@ async function runCheckin() {
   }
 
   const failureHint = classified.state === "business_fail" && res.status === 400
-    ? "服务端未确认签到成功。请重新登录后刷新个人主页，重新捕获登录态后再运行脚本。"
+    ? "服务端未确认签到成功。若刚运行过令牌测试或重复执行签到，请等待几分钟后仅运行一次正式签到；仍失败时再重新登录、刷新个人主页并重新捕获登录态。"
     : "";
 
   const fallback = [
