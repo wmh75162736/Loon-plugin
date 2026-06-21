@@ -1,7 +1,5 @@
 (() => {
-const url = String($request.url || "");
-
-if (url.includes("kuwo.cn")) {
+  const url = String($request.url || "");
   let payload;
 
   try {
@@ -11,38 +9,22 @@ if (url.includes("kuwo.cn")) {
     return;
   }
 
-  if (url.includes("/service/banner/positions")) {
-    const positions = payload.data && typeof payload.data === "object" ? payload.data : {};
-    for (const key of Object.keys(positions)) positions[key] = [];
-    payload.data = positions;
-  } else {
+  const data = payload && typeof payload.data === "object" && payload.data ? payload.data : {};
+
+  if (url.includes("/popup/start/")) {
     payload.data = {};
+  } else if (url.includes("/service/advert/config")) {
+    data.screenHotBoot = 0;
+    data.screenColdBoot = 0;
+    data.screenSign = 0;
+    data.hotScreenTimeout = 0;
+    data.startUpPopLimit = 0;
+    payload.data = data;
+  } else if (url.includes("/advert/free/config")) {
+    data.freeSplash = false;
+    payload.data = data;
   }
 
-  console.log(`[MusicAd] Cleared Bodian promotion config: ${url.split("?")[0]}`);
+  console.log(`[MusicAd] Updated Bodian splash settings: ${url.split("?")[0]}`);
   $done({ body: JSON.stringify(payload) });
-  return;
-}
-
-const body = typeof $request.body === "string" ? $request.body : String($request.body || "");
-const blockedModules = [
-  "GetFreeModeOpenScreenConfig",
-  "GetFreeModeMaterialConfig",
-  "GetFreeModeInitInfo",
-];
-const matchedModule = blockedModules.find((name) => body.includes(name));
-
-if (!matchedModule) {
-  $done({});
-  return;
-}
-
-console.log(`[MusicAd] Blocked QQMusic ${matchedModule}`);
-$done({
-  response: {
-    status: 200,
-    headers: { "Content-Type": "application/octet-stream" },
-    body: "",
-  },
-});
 })();

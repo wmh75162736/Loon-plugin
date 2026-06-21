@@ -1,16 +1,17 @@
 #!name=音乐去广告
-#!desc=QQ音乐、波点音乐开屏及互动广告精准拦截（安全版）
+#!desc=QQ音乐互动广告、波点音乐开屏广告精准拦截
 #!author=ChatGPT
-#!version=1.4
+#!version=1.5
 #!date=2026-06-21
 #!loon_version=3.4.0(962)
 
 [URL Rewrite]
-# QQ音乐：抓包确认的互动广告接口会在 c、c6、szc、shc、shc6 等主机间分流。
-^https?:\/\/(?:c|c\d+|szc|shc|shc\d+)\.y\.qq\.com\/tips\/fcgi-bin\/fcg_get_advert\.fcg - reject-200
+# QQ音乐：抓包确认的互动广告接口会在 c、c6、szc、szc6、shc、shc6 等主机间分流。
+^https?:\/\/(?:c|c\d+|szc|szc\d+|shc|shc\d+)\.y\.qq\.com\/tips\/fcgi-bin\/fcg_get_advert\.fcg - reject-200
 
-# 波点音乐：仅拦截启动开屏配置与兜底请求，不修改登录、首页、会员和播放配置。
-^https?:\/\/bd-(?:api|lv)\.kuwo\.cn\/api\/popup\/start\/(?:info|fallback) - reject-200
+[Script]
+# 波点音乐：只关闭开屏相关字段，保留账号、首页、播放和会员数据。
+波点音乐开屏配置 = type=http-response,pattern=^https?:\/\/bd-(?:api|lv)\.kuwo\.cn\/api\/(?:popup\/start\/(?:info|fallback)|service\/advert\/config|advert\/free\/config),requires-body=1,script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/MusicAd/music-adblock.js
 
 [Rule]
 # QQ音乐：原有广告分发、点击及统计规则
@@ -27,4 +28,4 @@ DOMAIN,tmeadbak.y.qq.com,REJECT
 DOMAIN,tmeadquic.y.qq.com,REJECT
 
 [MITM]
-hostname = c.y.qq.com, c6.y.qq.com, szc.y.qq.com, shc.y.qq.com, shc6.y.qq.com, bd-api.kuwo.cn, bd-lv.kuwo.cn
+hostname = c.y.qq.com, c6.y.qq.com, szc.y.qq.com, szc6.y.qq.com, shc.y.qq.com, shc6.y.qq.com, bd-api.kuwo.cn, bd-lv.kuwo.cn
