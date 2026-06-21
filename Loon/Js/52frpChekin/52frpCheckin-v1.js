@@ -1,5 +1,5 @@
 /*
-52FRP Loon 自动签到脚本 v1.4
+52FRP Loon 自动签到脚本 v1.5
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 插件用途
@@ -25,7 +25,7 @@ Loon 插件配置
 https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js
 
 #!name=52FRP 自动签到
-#!desc=52FRP 每日签到 + 防缓存获取临时签到令牌 v1.4
+#!desc=52FRP 每日签到 + 防缓存令牌 + 官方时序等待 v1.5
 #!author=ChatGPT
 #!homepage=https://www.52frp.com
 #!icon=https://www.52frp.com/favicon.ico
@@ -94,7 +94,8 @@ hostname = www.52frp.com
 3. 捕获成功后请关闭临时捕获登录态，避免影响网页访问。
 4. 如果提示登录态失效，请重新登录后再开启临时捕获登录态重新捕获。
 5. 本脚本只用于个人账号的正常签到请求，不包含验证码绕过、破解登录或异常请求逻辑。
-6. v1.4 会在每次签到前以随机参数和禁用缓存头重新获取临时签到令牌，旧的签到请求体不会被复用。
+6. v1.5 会在每次签到前以随机参数和禁用缓存头重新获取临时签到令牌，旧的签到请求体不会被复用。
+7. 令牌获取后会自动等待 10 秒再提交，以贴近网页端实际请求时序。
 7. “52FRP 签到令牌测试”只验证令牌接口，不会执行签到。
 */
 
@@ -106,6 +107,7 @@ const USER_URL = "https://www.52frp.com/user/";
 const DEFAULT_SIGN_URL = "https://www.52frp.com/api/user/sign";
 const SIGN_INFO_URL = "https://www.52frp.com/api/user/sign/info";
 const SLIDER_TOKEN_URL = "https://www.52frp.com/api/user/slider-token";
+const TOKEN_SUBMIT_DELAY_MS = 10000;
 
 const PREFIX = "frp52_v10_";
 const LEGACY_PREFIXES = ["frp52_v19_", "frp52_v18_"];
@@ -917,6 +919,9 @@ async function runCheckin() {
     done({});
     return;
   }
+
+  console.log(`令牌已获取，等待 ${TOKEN_SUBMIT_DELAY_MS / 1000} 秒后提交签到...`);
+  await new Promise((resolve) => setTimeout(resolve, TOKEN_SUBMIT_DELAY_MS));
 
   const options = {
     url: DEFAULT_SIGN_URL,
