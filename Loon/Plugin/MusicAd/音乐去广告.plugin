@@ -1,0 +1,31 @@
+#!name=音乐去广告
+#!desc=QQ音乐、波点音乐去开屏/互动广告，保留QQ音乐常见广告分发与统计拦截
+#!author=ChatGPT
+#!version=1.1
+#!date=2026-06-21
+#!loon_version=3.4.0(962)
+
+[URL Rewrite]
+# QQ音乐：当前开屏/互动广告配置接口
+^https?:\/\/c\.y\.qq\.com\/tips\/fcgi-bin\/fcg_get_advert\.fcg - reject-200
+
+# 波点音乐：启动开屏配置与兜底接口
+^https?:\/\/bd-api\.kuwo\.cn\/api\/popup\/start\/info - reject-200
+^https?:\/\/bd-api\.kuwo\.cn\/api\/popup\/start\/fallback - reject-200
+
+[Rule]
+# QQ音乐：原有广告分发、点击及统计规则
+DOMAIN,adstats.tencentmusic.com,REJECT
+DOMAIN,ad.tencentmusic.com,REJECT
+DOMAIN,adcdn.tencentmusic.com,REJECT
+DOMAIN,adcdn6.tencentmusic.com,REJECT
+DOMAIN,adexpo.tencentmusic.com,REJECT
+DOMAIN,adclick.tencentmusic.com,REJECT
+DOMAIN,mc.tencentmusic.com,REJECT
+DOMAIN,monitor.music.qq.com,REJECT
+DOMAIN,tmead.y.qq.com,REJECT
+DOMAIN,tmeadbak.y.qq.com,REJECT
+DOMAIN,tmeadquic.y.qq.com,REJECT
+
+[MITM]
+hostname = c.y.qq.com, bd-api.kuwo.cn
