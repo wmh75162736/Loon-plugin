@@ -18,11 +18,16 @@ var SIGN_KEY = "apr1$AwP!wRRT$gJ/q.X24poeBInlUJC";
 var APP_VERSION = "10.4.1";
 var SK = "ierkM0OZZbsuBKLoAgQ6OJneLMXBQXmzX+LXkNTuKch8Ui2jGlahuFyWIzBiDq/L";
 var DEFAULT_UA = "smzdm_android_V10.4.1 rv:841 (Android12;zh)smzdmapp";
+var OPTIONS = getRuntimeOptions();
 
 main()
   .catch(function (err) {
     log("ERROR: " + (err && err.stack ? err.stack : err));
-    notify(NAME, "执行失败", String(err && err.message ? err.message : err));
+    if (typeof $request !== "undefined" && $request) {
+      notify(NAME, "执行失败", String(err && err.message ? err.message : err));
+    } else {
+      notifyAuto("执行失败", String(err && err.message ? err.message : err), false);
+    }
   })
   .finally(function () {
     if (typeof $done === "function") $done({});
@@ -39,24 +44,27 @@ async function main() {
 
   var accounts = loadAccounts();
   if (!accounts.length) {
-    notify(NAME, "未找到 Cookie", "打开什么值得买 App，进入签到页并手动签到一次后再运行。");
+    notifyAuto("未找到 Cookie", "打开什么值得买 App，进入签到页并手动签到一次后再运行。", false);
     markRandomScheduleDone(gate.state);
     return;
   }
 
   log("Found " + accounts.length + " account(s)");
   var lines = [];
+  var allOk = true;
   for (var i = 0; i < accounts.length; i++) {
     try {
       var result = await checkin(accounts[i], i + 1);
+      if (!result.ok) allOk = false;
       lines.push("账号" + (i + 1) + ": " + result.message);
-      if (i < accounts.length - 1) await delay(1200 + Math.floor(Math.random() * 1800));
+      if (i < accounts.length - 1) await delay(OPTIONS.accountIntervalSeconds * 1000 + Math.floor(Math.random() * 2000));
     } catch (err) {
+      allOk = false;
       lines.push("账号" + (i + 1) + ": " + String(err && err.message ? err.message : err));
     }
   }
 
-  notify(NAME, "签到完成", lines.join("\n"));
+  notifyAuto("签到完成", lines.join("\n"), allOk);
   markRandomScheduleDone(gate.state);
 }
 
@@ -104,11 +112,13 @@ async function checkin(account, index) {
   var message = body.error_msg || "无返回消息";
 
   var rewardText = "";
-  try {
-    var reward = await post("https://user-api.smzdm.com/checkin/all_reward", data, account);
-    rewardText = formatReward(parseJson(reward.body));
-  } catch (err) {
-    rewardText = "";
+  if (OPTIONS.queryReward) {
+    try {
+      var reward = await post("https://user-api.smzdm.com/checkin/all_reward", data, account);
+      rewardText = formatReward(parseJson(reward.body));
+    } catch (err) {
+      rewardText = "";
+    }
   }
 
   if (body.data) {
@@ -229,15 +239,74 @@ function saveAccounts(accounts) {
   return storeWrite(JSON.stringify(accounts), STORE_KEY);
 }
 
+function getRuntimeOptions() {
+  var args = normalizeArgument(typeof $argument !== "undefined" ? $argument : {});
+  var minDelay = readInt(args.minDelay, RANDOM_DELAY_MINUTES_MIN);
+  var maxDelay = readInt(args.maxDelay, RANDOM_DELAY_MINUTES_MAX);
+  if (minDelay < 0) minDelay = RANDOM_DELAY_MINUTES_MIN;
+  if (maxDelay < 0) maxDelay = RANDOM_DELAY_MINUTES_MAX;
+  if (maxDelay < minDelay) {
+    var tmp = minDelay;
+    minDelay = maxDelay;
+    maxDelay = tmp;
+  }
+
+  return {
+    notifyMode: normalizeNotifyMode(args.notifyMode),
+    minDelayMinutes: minDelay,
+    maxDelayMinutes: maxDelay,
+    queryReward: readBool(args.queryReward, true),
+    accountIntervalSeconds: Math.max(0, readInt(args.accountInterval, 2)),
+  };
+}
+
+function normalizeArgument(argument) {
+  if (!argument) return {};
+  if (typeof argument === "object") return argument;
+  if (typeof argument !== "string") return {};
+  try {
+    var parsed = JSON.parse(argument);
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch (err) {}
+
+  var keys = ["notifyMode", "minDelay", "maxDelay", "queryReward", "accountInterval"];
+  var values = argument.split(",");
+  var result = {};
+  for (var i = 0; i < keys.length && i < values.length; i++) {
+    result[keys[i]] = values[i];
+  }
+  return result;
+}
+
+function normalizeNotifyMode(value) {
+  value = String(value || "failure").toLowerCase();
+  if (value === "always" || value === "never" || value === "failure") return value;
+  return "failure";
+}
+
+function readInt(value, fallback) {
+  var parsed = parseInt(value, 10);
+  return isNaN(parsed) ? fallback : parsed;
+}
+
+function readBool(value, fallback) {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "boolean") return value;
+  value = String(value).toLowerCase();
+  return value === "true" || value === "1" || value === "yes" || value === "on";
+}
+
 function randomScheduleGate() {
   var now = new Date();
   var today = formatDate(now);
   var state = loadRandomScheduleState();
   if (!state || state.date !== today) {
-    var delayMinutes = randomInt(RANDOM_DELAY_MINUTES_MIN, RANDOM_DELAY_MINUTES_MAX);
+    var delayMinutes = randomInt(OPTIONS.minDelayMinutes, OPTIONS.maxDelayMinutes);
     state = {
       date: today,
       delayMinutes: delayMinutes,
+      minDelayMinutes: OPTIONS.minDelayMinutes,
+      maxDelayMinutes: OPTIONS.maxDelayMinutes,
       targetAt: now.getTime() + delayMinutes * 60 * 1000,
       done: false,
     };
@@ -350,6 +419,15 @@ function storeRead(key) {
 function storeWrite(value, key) {
   if (typeof $persistentStore !== "undefined") return $persistentStore.write(value, key);
   return false;
+}
+
+function notifyAuto(subtitle, body, ok) {
+  if (OPTIONS.notifyMode === "never") return;
+  if (OPTIONS.notifyMode === "failure" && ok) {
+    log([NAME, subtitle, body].filter(Boolean).join(" - "));
+    return;
+  }
+  notify(NAME, subtitle, body);
 }
 
 function notify(title, subtitle, body) {

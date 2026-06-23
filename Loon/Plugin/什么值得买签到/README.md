@@ -20,8 +20,32 @@
 
 - `获取 Cookie`: 默认关闭。首次使用或 Cookie 失效时在插件“设置”里打开，进入什么值得买 App 手动签到一次，提示获取成功后关闭。
 - `每日自动签到`: 默认开启。cron 每 5 分钟短暂唤醒一次，脚本每天生成一次随机目标时间，到点后自动签到。
+- `通知模式`: 默认 `failure`，仅失败通知；可改为 `always` 或 `never`。
+- `最小随机延迟分钟`: 默认 `5`。
+- `最大随机延迟分钟`: 默认 `60`。
+- `查询签到奖励`: 默认开启。关闭后只执行签到，不额外请求奖励详情。
+- `多账号间隔秒`: 默认 `2`，多个 Cookie 账号之间会额外加少量随机等待。
 
 插件通过 `[Argument]` 提供 Loon 设置面板开关，并用 `enable={captureCookie}`、`enable={dailyCheckin}` 控制脚本资源是否启用。单独在脚本资源行写 `enable=false/true` 不会显示设置面板。
+
+## Cookie 说明
+
+常见网页签到脚本多抓取 `zhiyou.smzdm.com` 或 `www.smzdm.com` 的网页 Cookie，再请求 Web 端签到接口。你的抓包里 Web 端 `zhiyou.smzdm.com/user/checkin/jsonp_checkin` 已返回验证码错误，所以本插件没有走网页签到。
+
+本插件当前抓取的是 App 端请求：
+
+```text
+https://user-api.smzdm.com/checkin
+```
+
+保存的是该请求头里的 `Cookie`，主要用于 `user-api.smzdm.com` 的 App 端接口。脚本签到时会再请求 `user-api.smzdm.com/robot/token` 获取 token，并按 App 端参数生成签名后请求 `user-api.smzdm.com/checkin`。
+
+主要区别和风险：
+
+- 网页 Cookie 更容易被旧脚本复用，但可能触发网页验证码或风控。
+- App 端 Cookie 更贴近你这次抓包的真实签到链路，能避开这次 Web 端验证码问题。
+- App 端请求包含移动端会话信息，仍然属于敏感登录态，泄露后可能被别人调用账号相关接口。
+- 建议 `获取 Cookie` 默认关闭，只在首次使用或 Cookie 失效时打开；不要公开 Loon 日志、抓包文件或持久化存储内容。
 
 ## 一键导入 Loon
 
