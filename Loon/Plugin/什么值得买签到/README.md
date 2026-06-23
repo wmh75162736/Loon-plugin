@@ -16,18 +16,20 @@
 - 查询签到奖励接口 `checkin/all_reward`。
 - 通过 Loon 通知展示签到结果、连续签到天数、积分、金币、经验等奖励信息。
 
-## 一键导入链接
+## 一键导入 Loon
 
-直接复制到 Safari 打开，或在 Loon 中导入：
+[一键添加到 Loon](https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubusercontent.com%2Fwmh75162736%2FLoon-plugin%2Frefs%2Fheads%2Fmain%2FLoon%2FPlugin%2F%25E4%25BB%2580%25E4%25B9%2588%25E5%2580%25BC%25E5%25BE%2597%25E4%25B9%25B0%25E7%25AD%25BE%25E5%2588%25B0%2Fsmzdm_daily_loon.plugin)
+
+复制链接到 Safari 打开：
 
 ```text
-loon://import?plugin=https%3A%2F%2Fraw.githubusercontent.com%2Fwmh75162736%2FLoon-plugin%2Fmain%2FLoon%2FPlugin%2F%25E4%25BB%2580%25E4%25B9%2588%25E5%2580%25BC%25E5%25BE%2597%25E4%25B9%25B0%25E7%25AD%25BE%25E5%2588%25B0%2Fsmzdm_daily_loon.plugin
+https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubusercontent.com%2Fwmh75162736%2FLoon-plugin%2Frefs%2Fheads%2Fmain%2FLoon%2FPlugin%2F%25E4%25BB%2580%25E4%25B9%2588%25E5%2580%25BC%25E5%25BE%2597%25E4%25B9%25B0%25E7%25AD%25BE%25E5%2588%25B0%2Fsmzdm_daily_loon.plugin
 ```
 
 Raw 插件地址：
 
 ```text
-https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/%E4%BB%80%E4%B9%88%E5%80%BC%E5%BE%97%E4%B9%B0%E7%AD%BE%E5%88%B0/smzdm_daily_loon.plugin
+https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/%E4%BB%80%E4%B9%88%E5%80%BC%E5%BE%97%E4%B9%B0%E7%AD%BE%E5%88%B0/smzdm_daily_loon.plugin
 ```
 
 Raw 脚本地址：
