@@ -1,10 +1,17 @@
 #!name=什么值得买每日签到
 #!desc=打开什么值得买 App 手动签到一次获取 Cookie，然后按定时任务自动签到。
 #!author=Codex
+#!homepage=https://github.com/wmh75162736/Loon-plugin/tree/main/Loon/Plugin/%E4%BB%80%E4%B9%88%E5%80%BC%E5%BE%97%E4%B9%B0%E7%AD%BE%E5%88%B0
+#!icon=https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/smzdm.png
+#!loon_version=3.4.0(962)
+
+[Argument]
+captureCookie = switch,false,tag=获取 Cookie,desc=首次使用或 Cookie 失效时打开，进入什么值得买 App 手动签到一次，提示获取成功后关闭。
+dailyCheckin = switch,true,tag=每日自动签到,desc=开启后按 10:00-11:59 窗口随机延迟 5-60 分钟执行每日签到。
 
 [Script]
-http-request ^https?:\/\/user-api\.smzdm\.com\/checkin$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/%E4%BB%80%E4%B9%88%E5%80%BC%E5%BE%97%E4%B9%B0%E7%AD%BE%E5%88%B0/smzdm_daily_loon.js,tag=什么值得买_获取Cookie,enable=false
-cron "*/5 10-11 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/%E4%BB%80%E4%B9%88%E5%80%BC%E5%BE%97%E4%B9%B0%E7%AD%BE%E5%88%B0/smzdm_daily_loon.js,timeout=60,tag=什么值得买_每日签到,enable=true
+http-request ^https?:\/\/user-api\.smzdm\.com\/checkin$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/%E4%BB%80%E4%B9%88%E5%80%BC%E5%BE%97%E4%B9%B0%E7%AD%BE%E5%88%B0/smzdm_daily_loon.js,tag=什么值得买_获取Cookie,enable={captureCookie}
+cron "*/5 10-11 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/%E4%BB%80%E4%B9%88%E5%80%BC%E5%BE%97%E4%B9%B0%E7%AD%BE%E5%88%B0/smzdm_daily_loon.js,timeout=60,tag=什么值得买_每日签到,enable={dailyCheckin}
 
 [MITM]
 hostname = user-api.smzdm.com

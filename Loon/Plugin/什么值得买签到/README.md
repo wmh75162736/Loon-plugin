@@ -18,10 +18,10 @@
 
 ## 开关说明
 
-- `什么值得买_获取Cookie`: 默认关闭。首次使用或 Cookie 失效时手动开启，打开 App 手动签到一次，提示获取成功后可关闭。
-- `什么值得买_每日签到`: 默认开启。cron 每 5 分钟短暂唤醒一次，脚本每天生成一次随机目标时间，到点后自动签到。
+- `获取 Cookie`: 默认关闭。首次使用或 Cookie 失效时在插件“设置”里打开，进入什么值得买 App 手动签到一次，提示获取成功后关闭。
+- `每日自动签到`: 默认开启。cron 每 5 分钟短暂唤醒一次，脚本每天生成一次随机目标时间，到点后自动签到。
 
-不设置 `enable` 时，Loon 通常会按启用状态加载脚本规则；`http-request` 获取 Cookie 规则会在 App 真实访问 `user-api.smzdm.com/checkin` 时触发。定时签到执行的是 cron 任务，脚本内部也会通过 `$request` 是否存在区分“抓 Cookie”和“执行签到”，不会把 cron 入口当成抓 Cookie 入口。
+插件通过 `[Argument]` 提供 Loon 设置面板开关，并用 `enable={captureCookie}`、`enable={dailyCheckin}` 控制脚本资源是否启用。单独在脚本资源行写 `enable=false/true` 不会显示设置面板。
 
 ## 一键导入 Loon
 
@@ -49,7 +49,7 @@ https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/%E4%B
 
 1. 在 Loon 中导入 `smzdm_daily_loon.plugin`。
 2. 开启 MITM，并确保证书已安装和信任。
-3. 首次使用时，手动开启插件里的 `什么值得买_获取Cookie`。
+3. 首次使用时，在插件“设置”里打开 `获取 Cookie`。
 4. 确认 MITM 域名包含：
 
 ```text
@@ -57,7 +57,7 @@ user-api.smzdm.com
 ```
 
 5. 打开什么值得买 App，进入签到页并手动签到一次。
-6. Loon 通知出现 `Cookie 获取成功` 后，关闭 `什么值得买_获取Cookie`，保留 `什么值得买_每日签到` 开启即可。
+6. Loon 通知出现 `Cookie 获取成功` 后，关闭 `获取 Cookie`，保留 `每日自动签到` 开启即可。
 
 ## 默认任务
 
