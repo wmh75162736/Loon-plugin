@@ -3,7 +3,7 @@
 ## 生成信息
 
 - 更新时间：2026-06-23
-- 脚本版本：v1.6
+- 脚本版本：v1.7
 - 脚本路径：`Loon/Js/52frpChekin/52frpCheckin-v1.js`
 - 适用客户端：Loon（iOS）
 
@@ -29,6 +29,8 @@ https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/J
 - 记录 Cookie、Token、请求头和登录态。
 - 可选保存 52FRP 用户名/密码到 Loon 本地持久化存储。
 - Bearer Token 快过期或接口返回 401 时，自动调用登录接口换取新 Token。
+- 自动登录续期只使用已保存的账号密码，不携带旧 Cookie 或旧登录态；已有 Token 时普通 API 请求也会优先走 Token。
+- 提供手动清理本地登录数据模式，方便清空脚本保存的凭据、Token、Cookie 和请求头。
 - 日志显示日期、签到状态、累计签到、连续签到、本次获得流量和累计获得流量。
 - 临时捕获规则默认关闭，避免长期影响网页访问。
 
@@ -38,7 +40,7 @@ https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/J
 
 ```ini
 #!name=52FRP 自动签到
-#!desc=52FRP 每日签到 + 自动登录续期 + 官方时序等待 v1.6
+#!desc=52FRP 每日签到 + 自动登录续期 + 官方时序等待 v1.7
 #!author=ChatGPT
 #!homepage=https://www.52frp.com
 #!icon=https://www.52frp.com/favicon.ico
@@ -55,6 +57,9 @@ cron "10 8 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon
 
 # 签到令牌测试：默认关闭，仅用于手动运行。
 cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, argument=token-test, timeout=60, tag=52FRP 签到令牌测试, enable=false
+
+# 清理本地登录数据：默认关闭，仅用于手动运行。
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, argument=clear-auth, timeout=10, tag=52FRP 清理本地登录数据, enable=false
 
 [MITM]
 hostname = www.52frp.com
@@ -76,6 +81,7 @@ hostname = www.52frp.com
 - 只需开启“52FRP 每日签到”。
 - “52FRP 临时捕获登录态”和“52FRP 临时捕获登录凭据”都应保持关闭。
 - 如果收到“自动登录续期失败”或服务端后续要求验证码，重新执行首次使用中的登录态/登录凭据捕获步骤。
+- 如需清空脚本保存的数据，手动运行一次“52FRP 清理本地登录数据”。
 
 ## 日志示例
 
@@ -91,6 +97,7 @@ hostname = www.52frp.com
 ## 注意事项
 
 - 自动登录续期需要把 52FRP 用户名/密码保存到 Loon 本地持久化存储。
+- 自动登录续期请求不会带旧 Cookie；它会用账号密码直接向登录接口换取新 Token。已有 Token 时，脚本也不会继续混带旧 Cookie。
 - 本脚本不会把账号密码写入 GitHub 脚本文件。
 - 本脚本不包含验证码绕过、登录破解或异常请求逻辑。
 - 如果 52FRP 登录接口后续加入滑块、验证码或更强风控，自动登录续期可能失效。

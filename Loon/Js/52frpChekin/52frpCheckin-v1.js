@@ -1,5 +1,5 @@
 /*
-52FRP Loon 自动签到脚本 v1.6
+52FRP Loon 自动签到脚本 v1.7
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 插件用途
@@ -26,7 +26,7 @@ Loon 插件配置
 https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js
 
 #!name=52FRP 自动签到
-#!desc=52FRP 每日签到 + 自动登录续期 + 官方时序等待 v1.6
+#!desc=52FRP 每日签到 + 自动登录续期 + 官方时序等待 v1.7
 #!author=ChatGPT
 #!homepage=https://www.52frp.com
 #!icon=https://www.52frp.com/favicon.ico
@@ -53,6 +53,10 @@ cron "10 8 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon
 # 签到令牌测试：默认关闭，仅用于手动运行。
 # 无论今天是否已签到，都会请求新的 slider_token 并检查响应；不会提交签到请求。
 cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, argument=token-test, timeout=60, tag=52FRP 签到令牌测试, enable=false
+
+# 清理本地登录数据：默认关闭，仅用于手动运行。
+# 会清空本脚本保存的账号密码、Token、Cookie、请求头和上次运行结果。
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, argument=clear-auth, timeout=10, tag=52FRP 清理本地登录数据, enable=false
 
 [MITM]
 hostname = www.52frp.com
@@ -102,14 +106,16 @@ hostname = www.52frp.com
 3. 临时捕获登录凭据会把账号密码保存到 Loon 本地持久化存储；仅在你接受该风险时使用。
 4. 如果提示登录态失效，请重新登录后再开启临时捕获登录态重新捕获。
 5. 本脚本只用于个人账号的正常签到请求，不包含验证码绕过、破解登录或异常请求逻辑。
-6. v1.6 会在 Bearer Token 快过期或 401 时尝试自动登录续期；若登录接口后续加入验证码，该能力会失效。
+6. v1.7 会在 Bearer Token 快过期或 401 时尝试自动登录续期；若登录接口后续加入验证码，该能力会失效。
 7. 令牌获取后会自动等待 10 秒再提交，以贴近网页端实际请求时序。
 8. “52FRP 签到令牌测试”只验证令牌接口，不会执行签到。
+9. “52FRP 清理本地登录数据”会清空脚本保存的凭据和登录态，清理后需重新捕获。
 */
 
 const APP_NAME = "52FRP 自动签到";
 const SCRIPT_ARGUMENT = typeof $argument !== "undefined" ? String($argument || "") : "";
 const IS_TOKEN_TEST = /(?:^|[,&\s])(?:token-test|mode=token-test)(?:$|[,&\s])/i.test(SCRIPT_ARGUMENT);
+const IS_CLEAR_AUTH = /(?:^|[,&\s])(?:clear-auth|clear-login|reset-auth)(?:$|[,&\s])/i.test(SCRIPT_ARGUMENT);
 
 const USER_URL = "https://www.52frp.com/user/";
 const LOGIN_URL = "https://www.52frp.com/api/user/login";
@@ -121,6 +127,28 @@ const TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
 
 const PREFIX = "frp52_v10_";
 const LEGACY_PREFIXES = ["frp52_v19_", "frp52_v18_"];
+const AUTH_STORE_NAMES = [
+  "cookie",
+  "ua",
+  "authorization",
+  "authorization_exp",
+  "x_token",
+  "x_auth_token",
+  "token",
+  "satoken",
+  "csrf",
+  "xsrf",
+  "login_username",
+  "login_password",
+  "sign_headers_json",
+  "sign_body",
+  "sign_url",
+  "sign_method",
+  "sign_content_type",
+  "last_result",
+  "info_notice_time",
+  "auth_notice_time"
+];
 
 const INFO_NOTICE_INTERVAL = 5 * 60 * 1000;
 const AUTH_NOTICE_INTERVAL = 5 * 60 * 1000;
@@ -167,6 +195,18 @@ function readStore(name) {
 
 function writeStore(name, value) {
   return writeRaw(value, key(name));
+}
+
+function clearStore(name) {
+  writeRaw("", key(name));
+
+  for (const prefix of LEGACY_PREFIXES) {
+    writeRaw("", prefix + name);
+  }
+}
+
+function clearAuthState() {
+  AUTH_STORE_NAMES.forEach(clearStore);
 }
 
 function done(value) {
@@ -255,12 +295,22 @@ function parseBodyParams(body) {
     const index = part.indexOf("=");
     if (index <= 0) return;
 
-    const name = decodeURIComponent(part.slice(0, index).replace(/\+/g, " "));
-    const value = decodeURIComponent(part.slice(index + 1).replace(/\+/g, " "));
+    const name = safeDecodeFormValue(part.slice(0, index));
+    const value = safeDecodeFormValue(part.slice(index + 1));
     output[name] = value;
   });
 
   return output;
+}
+
+function safeDecodeFormValue(value) {
+  const text = String(value || "").replace(/\+/g, " ");
+
+  try {
+    return decodeURIComponent(text);
+  } catch (e) {
+    return text;
+  }
 }
 
 function base64UrlDecode(text) {
@@ -653,7 +703,7 @@ function handleRequest() {
       notify(
         APP_NAME,
         "登录凭据已保存",
-        "账号密码已保存到 Loon 本地持久化存储，可关闭“52FRP 临时捕获登录凭据”"
+        "已保存本次登录请求中的账号密码；登录是否成功以 52FRP 页面结果为准，可关闭“52FRP 临时捕获登录凭据”"
       );
     }
 
@@ -717,8 +767,14 @@ function addStoredAuthHeaders(headers) {
   const satoken = readStore("satoken");
   const csrf = readStore("csrf");
   const xsrf = readStore("xsrf");
+  const hasTokenAuth = Boolean(authorization || xToken || xAuthToken || token || satoken);
 
-  if (cookie) setHeader(headers, "Cookie", cookie);
+  if (hasTokenAuth) {
+    removeHeader(headers, "Cookie");
+  } else if (cookie) {
+    setHeader(headers, "Cookie", cookie);
+  }
+
   if (ua) setHeader(headers, "User-Agent", ua);
 
   if (authorization) setHeader(headers, "Authorization", authorization);
@@ -843,9 +899,6 @@ async function refreshLoginState() {
     "X-Requested-With": "XMLHttpRequest",
     "User-Agent": readStore("ua") || "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148"
   };
-
-  const cookie = readStore("cookie");
-  if (cookie) setHeader(headers, "Cookie", cookie);
 
   console.log("登录态即将过期或已失效，尝试自动登录续期...");
 
@@ -1235,8 +1288,24 @@ async function runCheckin(retriedAfterRefresh) {
   done({});
 }
 
-if (typeof $request !== "undefined") {
-  handleRequest();
+if (IS_CLEAR_AUTH) {
+  clearAuthState();
+  notify(
+    APP_NAME,
+    "本地登录数据已清理",
+    "已清空本脚本保存的账号密码、Token、Cookie、请求头和上次运行结果"
+  );
+  done({});
+} else if (typeof $request !== "undefined") {
+  try {
+    handleRequest();
+  } catch (e) {
+    notify(APP_NAME, "请求处理异常", String(e && e.message ? e.message : e));
+    done({});
+  }
 } else {
-  runCheckin();
+  runCheckin().catch((e) => {
+    notify(APP_NAME, "脚本运行异常", String(e && e.message ? e.message : e));
+    done({});
+  });
 }
