@@ -1,5 +1,5 @@
 /*
-52FRP Loon 自动签到脚本 v1.5
+52FRP Loon 自动签到脚本 v1.6
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 插件用途
@@ -12,9 +12,10 @@
 2. 未签到时自动请求签到接口
 3. 已签到时直接输出简洁日志，避免重复签到
 4. 输出日期、签到状态、累计签到、连续签到、本次获得流量、累计获得流量
-5. 支持临时捕获登录态、Token、Cookie
+5. 支持临时捕获登录态、Token、Cookie 和登录凭据
 6. 每次签到前自动获取新的签到令牌，不复用旧令牌
-7. 临时捕获规则默认关闭，避免长期干预 52FRP 页面请求
+7. Bearer Token 过期或接口返回 401 时，可用已保存账号密码自动登录续期
+8. 临时捕获规则默认关闭，避免长期干预 52FRP 页面请求
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Loon 插件配置
@@ -25,12 +26,18 @@ Loon 插件配置
 https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js
 
 #!name=52FRP 自动签到
-#!desc=52FRP 每日签到 + 防缓存令牌 + 官方时序等待 v1.5
+#!desc=52FRP 每日签到 + 自动登录续期 + 官方时序等待 v1.6
 #!author=ChatGPT
 #!homepage=https://www.52frp.com
 #!icon=https://www.52frp.com/favicon.ico
 
 [Script]
+# 临时捕获登录凭据：默认关闭；仅在你接受本地保存账号密码时开启一次。
+# 1. 手动开启“52FRP 临时捕获登录凭据”
+# 2. 在 52FRP 登录页正常输入账号密码并登录
+# 3. 出现“登录凭据已保存”后立即关闭该脚本
+http-request ^https?:\/\/www\.52frp\.com\/api\/user\/login(?:\?|$) script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Js/52frpChekin/52frpCheckin-v1.js, requires-body=true, timeout=10, tag=52FRP 临时捕获登录凭据, enable=false
+
 # 临时捕获登录态：默认关闭
 # 需要重新抓 Cookie / Token 时：
 # 1. 先正常登录 52FRP
@@ -63,6 +70,7 @@ hostname = www.52frp.com
 6. 手动开启“52FRP 临时捕获登录态”
 7. 刷新个人主页并等待出现“登录态已捕获”
 8. 关闭“52FRP 临时捕获登录态”
+9. 如需自动登录续期，开启“52FRP 临时捕获登录凭据”，正常登录一次，出现“登录凭据已保存”后立即关闭
 
 日常使用：
 - 只开启“52FRP 每日签到”
@@ -91,12 +99,12 @@ hostname = www.52frp.com
 
 1. 52FRP 登录页包含前端路由和验证流程，不建议长期启用临时捕获登录态。
 2. 临时捕获登录态只在需要重新获取 Cookie、Token 时开启。
-3. 捕获成功后请关闭临时捕获登录态，避免影响网页访问。
+3. 临时捕获登录凭据会把账号密码保存到 Loon 本地持久化存储；仅在你接受该风险时使用。
 4. 如果提示登录态失效，请重新登录后再开启临时捕获登录态重新捕获。
 5. 本脚本只用于个人账号的正常签到请求，不包含验证码绕过、破解登录或异常请求逻辑。
-6. v1.5 会在每次签到前以随机参数和禁用缓存头重新获取临时签到令牌，旧的签到请求体不会被复用。
+6. v1.6 会在 Bearer Token 快过期或 401 时尝试自动登录续期；若登录接口后续加入验证码，该能力会失效。
 7. 令牌获取后会自动等待 10 秒再提交，以贴近网页端实际请求时序。
-7. “52FRP 签到令牌测试”只验证令牌接口，不会执行签到。
+8. “52FRP 签到令牌测试”只验证令牌接口，不会执行签到。
 */
 
 const APP_NAME = "52FRP 自动签到";
@@ -104,10 +112,12 @@ const SCRIPT_ARGUMENT = typeof $argument !== "undefined" ? String($argument || "
 const IS_TOKEN_TEST = /(?:^|[,&\s])(?:token-test|mode=token-test)(?:$|[,&\s])/i.test(SCRIPT_ARGUMENT);
 
 const USER_URL = "https://www.52frp.com/user/";
+const LOGIN_URL = "https://www.52frp.com/api/user/login";
 const DEFAULT_SIGN_URL = "https://www.52frp.com/api/user/sign";
 const SIGN_INFO_URL = "https://www.52frp.com/api/user/sign/info";
 const SLIDER_TOKEN_URL = "https://www.52frp.com/api/user/slider-token";
 const TOKEN_SUBMIT_DELAY_MS = 10000;
+const TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
 
 const PREFIX = "frp52_v10_";
 const LEGACY_PREFIXES = ["frp52_v19_", "frp52_v18_"];
@@ -229,6 +239,71 @@ function safeJsonParse(text) {
   } catch (e) {
     return null;
   }
+}
+
+function parseBodyParams(body) {
+  const text = String(body || "");
+  const json = safeJsonParse(text);
+
+  if (json && typeof json === "object") {
+    return json;
+  }
+
+  const output = {};
+
+  text.split("&").forEach((part) => {
+    const index = part.indexOf("=");
+    if (index <= 0) return;
+
+    const name = decodeURIComponent(part.slice(0, index).replace(/\+/g, " "));
+    const value = decodeURIComponent(part.slice(index + 1).replace(/\+/g, " "));
+    output[name] = value;
+  });
+
+  return output;
+}
+
+function base64UrlDecode(text) {
+  if (typeof atob !== "function") return "";
+
+  let value = String(text || "").replace(/-/g, "+").replace(/_/g, "/");
+
+  while (value.length % 4 !== 0) {
+    value += "=";
+  }
+
+  try {
+    return atob(value);
+  } catch (e) {
+    return "";
+  }
+}
+
+function getJwtPayload(tokenText) {
+  const token = String(tokenText || "").replace(/^Bearer\s+/i, "");
+  const parts = token.split(".");
+
+  if (parts.length < 2) return null;
+
+  const payloadText = base64UrlDecode(parts[1]);
+  return safeJsonParse(payloadText);
+}
+
+function getStoredBearerPayload() {
+  const authorization = readStore("authorization");
+  if (!authorization) return null;
+  return getJwtPayload(authorization);
+}
+
+function shouldRefreshStoredToken() {
+  const payload = getStoredBearerPayload();
+
+  if (!payload || !payload.exp) {
+    return Boolean(readStore("login_username") && readStore("login_password"));
+  }
+
+  const expiresAtMs = Number(payload.exp) * 1000;
+  return Date.now() + TOKEN_REFRESH_SKEW_MS >= expiresAtMs;
 }
 
 function formatDate(date) {
@@ -376,6 +451,11 @@ function isAuthOrLoginRequest(url) {
   );
 }
 
+function isLoginSubmitUrl(url, method) {
+  return /\/api\/user\/login(?:\?|$)/i.test(String(url || "")) &&
+    String(method || "GET").toUpperCase() === "POST";
+}
+
 function isSignInfoUrl(url) {
   return /\/api\/user\/sign\/info(?:\?|$)/i.test(String(url || ""));
 }
@@ -518,6 +598,21 @@ function saveAuthHeaders(headers) {
   return saved;
 }
 
+function saveLoginCredentials(body) {
+  const data = parseBodyParams(body);
+  const username = data.username || data.identifier || data.email || data.phone || "";
+  const password = data.password || data.pass || "";
+
+  if (!username || !password) {
+    return false;
+  }
+
+  writeStore("login_username", username);
+  writeStore("login_password", password);
+  console.log("已保存登录凭据");
+  return true;
+}
+
 function shouldNotifyInfo() {
   const now = Date.now();
   const last = Number(readStore("info_notice_time") || 0);
@@ -549,6 +644,19 @@ function handleRequest() {
   const body = $request.body || "";
 
   if (isStaticResource(url)) {
+    done({});
+    return;
+  }
+
+  if (isLoginSubmitUrl(url, method)) {
+    if (saveLoginCredentials(body)) {
+      notify(
+        APP_NAME,
+        "登录凭据已保存",
+        "账号密码已保存到 Loon 本地持久化存储，可关闭“52FRP 临时捕获登录凭据”"
+      );
+    }
+
     done({});
     return;
   }
@@ -653,12 +761,12 @@ function buildRequestHeaders() {
 
 function hasAnyLoginState() {
   return Boolean(
-    readStore("cookie") ||
     readStore("authorization") ||
     readStore("x_token") ||
     readStore("x_auth_token") ||
     readStore("token") ||
     readStore("satoken") ||
+    (readStore("login_username") && readStore("login_password")) ||
     readStore("sign_headers_json")
   );
 }
@@ -703,6 +811,80 @@ function getBusinessStatus(json) {
   if (json.errcode !== undefined) return json.errcode;
 
   return "";
+}
+
+function getLoginToken(text) {
+  const json = safeJsonParse(text);
+  if (!json || typeof json !== "object") return "";
+
+  const data = json.data && typeof json.data === "object" ? json.data : json;
+  const token = data.token || data.access_token || data.authorization || "";
+
+  return typeof token === "string" && token.length > 10 ? token : "";
+}
+
+async function refreshLoginState() {
+  const username = readStore("login_username");
+  const password = readStore("login_password");
+
+  if (!username || !password) {
+    return {
+      ok: false,
+      reason: "未保存登录凭据"
+    };
+  }
+
+  const headers = {
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "zh-CN,zh-Hans;q=0.9",
+    "Content-Type": "application/json",
+    "Origin": "https://www.52frp.com",
+    "Referer": USER_URL,
+    "X-Requested-With": "XMLHttpRequest",
+    "User-Agent": readStore("ua") || "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148"
+  };
+
+  const cookie = readStore("cookie");
+  if (cookie) setHeader(headers, "Cookie", cookie);
+
+  console.log("登录态即将过期或已失效，尝试自动登录续期...");
+
+  const res = await request({
+    url: LOGIN_URL,
+    method: "POST",
+    headers,
+    timeout: 30000,
+    body: JSON.stringify({ username, password })
+  });
+
+  if (res.error) {
+    return {
+      ok: false,
+      reason: String(res.error)
+    };
+  }
+
+  const token = getLoginToken(res.data);
+
+  if (!token) {
+    return {
+      ok: false,
+      reason: cleanText(res.data) || `HTTP=${res.status}`
+    };
+  }
+
+  const bearer = /^Bearer\s+/i.test(token) ? token : `Bearer ${token}`;
+  writeStore("authorization", bearer);
+
+  const payload = getJwtPayload(bearer);
+  if (payload && payload.exp) {
+    writeStore("authorization_exp", String(payload.exp));
+  }
+
+  console.log("自动登录续期成功");
+  return {
+    ok: true
+  };
 }
 
 function stringifyForJudge(text) {
@@ -837,7 +1019,7 @@ async function fetchSliderToken(headers) {
   });
 }
 
-async function runCheckin() {
+async function runCheckin(retriedAfterRefresh) {
   if (!hasAnyLoginState()) {
     notify(
       APP_NAME,
@@ -848,13 +1030,45 @@ async function runCheckin() {
     return;
   }
 
+  if (shouldRefreshStoredToken()) {
+    const refreshed = await refreshLoginState();
+
+    if (!refreshed.ok && !readStore("authorization")) {
+      notify(
+        APP_NAME,
+        "自动登录续期失败",
+        `${refreshed.reason || "请重新登录"}\n请开启“52FRP 临时捕获登录凭据”重新保存账号密码`
+      );
+      done({});
+      return;
+    }
+  }
+
   let headers = buildRequestHeaders();
   setHeader(headers, "Content-Type", "application/json");
   let signState = "签到状态暂未确认";
 
   console.log("先检查签到状态...");
 
-  const infoRes = await checkSignInfo(headers);
+  let infoRes = await checkSignInfo(headers);
+
+  if (isLoginExpired(infoRes.data, infoRes.status) && !retriedAfterRefresh) {
+    const refreshed = await refreshLoginState();
+
+    if (refreshed.ok) {
+      headers = buildRequestHeaders();
+      setHeader(headers, "Content-Type", "application/json");
+      infoRes = await checkSignInfo(headers);
+    } else {
+      notify(
+        APP_NAME,
+        "登录态可能失效",
+        `${refreshed.reason || "自动登录失败"}\n请开启“52FRP 临时捕获登录凭据”重新保存账号密码`
+      );
+      done({});
+      return;
+    }
+  }
 
   if (!infoRes.error && infoRes.status >= 200 && infoRes.status < 400) {
     if (isSignedFromInfo(infoRes.data)) {
@@ -884,11 +1098,29 @@ async function runCheckin() {
     return;
   }
 
+  if (isLoginExpired(tokenRes.data, tokenRes.status) && !retriedAfterRefresh) {
+    const refreshed = await refreshLoginState();
+
+    if (!refreshed.ok) {
+      notify(
+        APP_NAME,
+        "登录态可能失效",
+        `${refreshed.reason || "自动登录失败"}\n请开启“52FRP 临时捕获登录凭据”重新保存账号密码`
+      );
+      done({});
+      return;
+    }
+
+    headers = buildRequestHeaders();
+    setHeader(headers, "Content-Type", "application/json");
+    return runCheckin(true);
+  }
+
   if (isLoginExpired(tokenRes.data, tokenRes.status)) {
     notify(
       APP_NAME,
       "登录态可能失效",
-      "请重新登录后开启“52FRP 临时捕获登录态”，进入个人主页完成会话捕获"
+      "自动登录后仍无法获取签到令牌，请重新保存登录凭据"
     );
     done({});
     return;
@@ -943,11 +1175,27 @@ async function runCheckin() {
 
   const classified = classifyResult(res.data, res.status);
 
+  if (classified.state === "expired" && !retriedAfterRefresh) {
+    const refreshed = await refreshLoginState();
+
+    if (!refreshed.ok) {
+      notify(
+        APP_NAME,
+        "登录态可能失效",
+        `${refreshed.reason || "自动登录失败"}\n请开启“52FRP 临时捕获登录凭据”重新保存账号密码`
+      );
+      done({});
+      return;
+    }
+
+    return runCheckin(true);
+  }
+
   if (classified.state === "expired") {
     notify(
       APP_NAME,
       "登录态可能失效",
-      "请重新登录后开启“52FRP 临时捕获登录态”，进入个人主页完成会话捕获"
+      "自动登录后签到接口仍返回未授权，请重新保存登录凭据"
     );
     done({});
     return;
