@@ -1,9 +1,11 @@
 (() => {
-  const url = String($request.url || "");
+  const request = typeof $request !== "undefined" ? $request : {};
+  const response = typeof $response !== "undefined" ? $response : {};
+  const url = String(request.url || "");
   let payload;
 
   try {
-    payload = JSON.parse($response.body);
+    payload = JSON.parse(response.body || "");
   } catch (_) {
     $done({});
     return;

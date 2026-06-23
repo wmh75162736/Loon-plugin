@@ -3,8 +3,10 @@
 // 仅处理广告与推广展示，不处理会员权益、下载限制、流量限制或下载鉴权。
 
 (function () {
-  var url = ($request && $request.url) || "";
-  var body = ($response && $response.body) || "";
+  var request = typeof $request !== "undefined" ? $request : {};
+  var response = typeof $response !== "undefined" ? $response : {};
+  var url = request.url || "";
+  var body = response.body || "";
 
   function log(message) {
     try {
@@ -13,11 +15,12 @@
   }
 
   function headers(contentType) {
-    var result = Object.assign({}, ($response && $response.headers) || {});
+    var result = Object.assign({}, response.headers || {});
     delete result["Content-Encoding"];
     delete result["content-encoding"];
     delete result["Content-Length"];
     delete result["content-length"];
+    delete result["content-type"];
     result["Content-Type"] = contentType;
     return result;
   }

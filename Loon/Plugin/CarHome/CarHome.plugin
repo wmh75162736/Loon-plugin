@@ -3,20 +3,21 @@
 #!author=ChatGPT
 #!homepage=https://github.com/wmh75162736/Loon-plugin
 #!icon=https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/AutoHome.png
-#!date=2026-06-20
+#!version=1.1
+#!date=2026-06-23
 
 [Script]
 # 仅清理抓包确认的运营广告字段；不改写 mycard、账号、车辆和正常资讯接口。
-http-response ^https?:\/\/mobile\.app\.autohome\.com\.cn\/platform\/app-ops-product-api\/(?:pageCard\/queryPageCardData|resource\/queryresourcedatas)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=1, requires-body=true, timeout=10, tag=汽车之家运营广告净化, enable=true
-http-response ^https?:\/\/club\.app\.autohome\.com\.cn\/club_v\d+(?:\.\d+){2}\/club\/index\/businessv\d+(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=1, requires-body=true, timeout=10, tag=汽车之家社区运营横幅, enable=true
-http-response ^https?:\/\/cars\.app\.autohome\.com\.cn\/carstreaming\/clue\/getruleconfig(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=1, requires-body=true, timeout=10, tag=汽车之家报价弹窗, enable=true
-http-response ^https?:\/\/(?:a\.athm\.cn\/)?cars\.app\.autohome\.com\.cn\/carstreaming\/selectcarportal\/reclist(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=1, requires-body=true, timeout=10, tag=汽车之家移除直播浮窗, enable=true
-http-response ^https?:\/\/(?:a\.athm\.cn\/)?cars\.app\.autohome\.com\.cn\/carstreaming\/selectcarportal\/seriestopwithtagscard(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=1, requires-body=true, timeout=10, tag=汽车之家移除报价页直播, enable=true
-http-response ^https?:\/\/cars\.app\.autohome\.com\.cn\/carstreaming\/seriessummary\/(?:operatecardinfo|tabcard)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=1, requires-body=true, timeout=10, tag=汽车之家当前报价页直播, enable=true
-http-response ^https?:\/\/news\.app\.autohome\.com\.cn\/car_v\d+(?:\.\d+){2}\/indexpage\/reclist(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=1, requires-body=true, timeout=10, tag=汽车之家选车页推广, enable=true
-http-response ^https?:\/\/news\.app\.autohome\.com\.cn\/car_v\d+(?:\.\d+){2}\/brandseriespage\/seriestopwithtags(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=1, requires-body=true, timeout=10, tag=汽车之家品牌页推广, enable=true
-http-response ^https?:\/\/news\.app\.autohome\.com\.cn\/shouye_v\d+(?:\.\d+){2}\/news\/feed(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=1, requires-body=true, timeout=10, tag=汽车之家信息流广告, enable=true
-http-response ^https?:\/\/apiautoappusc\.che168\.com\/apic\/v\d+\/gethomepagefeed(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=1, requires-body=true, timeout=10, tag=汽车之家二手车插卡, enable=true
+http-response ^https?:\/\/mobile\.app\.autohome\.com\.cn\/platform\/app-ops-product-api\/(?:pageCard\/queryPageCardData|resource\/queryresourcedatas)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=2, requires-body=true, timeout=10, tag=汽车之家运营广告净化, enable=true
+http-response ^https?:\/\/club\.app\.autohome\.com\.cn\/club_v\d+(?:\.\d+){2}\/club\/index\/businessv\d+(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=2, requires-body=true, timeout=10, tag=汽车之家社区运营横幅, enable=true
+http-response ^https?:\/\/cars\.app\.autohome\.com\.cn\/carstreaming\/clue\/getruleconfig(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=2, requires-body=true, timeout=10, tag=汽车之家报价弹窗, enable=true
+http-response ^https?:\/\/(?:a\.athm\.cn\/)?cars\.app\.autohome\.com\.cn\/carstreaming\/selectcarportal\/reclist(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=2, requires-body=true, timeout=10, tag=汽车之家移除直播浮窗, enable=true
+http-response ^https?:\/\/(?:a\.athm\.cn\/)?cars\.app\.autohome\.com\.cn\/carstreaming\/selectcarportal\/seriestopwithtagscard(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=2, requires-body=true, timeout=10, tag=汽车之家移除报价页直播, enable=true
+http-response ^https?:\/\/cars\.app\.autohome\.com\.cn\/carstreaming\/seriessummary\/(?:operatecardinfo|tabcard)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=2, requires-body=true, timeout=10, tag=汽车之家当前报价页直播, enable=true
+http-response ^https?:\/\/news\.app\.autohome\.com\.cn\/car_v\d+(?:\.\d+){2}\/indexpage\/reclist(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=2, requires-body=true, timeout=10, tag=汽车之家选车页推广, enable=true
+http-response ^https?:\/\/news\.app\.autohome\.com\.cn\/car_v\d+(?:\.\d+){2}\/brandseriespage\/seriestopwithtags(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=2, requires-body=true, timeout=10, tag=汽车之家品牌页推广, enable=true
+http-response ^https?:\/\/news\.app\.autohome\.com\.cn\/shouye_v\d+(?:\.\d+){2}\/news\/feed(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=2, requires-body=true, timeout=10, tag=汽车之家信息流广告, enable=true
+http-response ^https?:\/\/apiautoappusc\.che168\.com\/apic\/v\d+\/gethomepagefeed(?:\?.*)?$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/CarHome/CarHome.js?v=2, requires-body=true, timeout=10, tag=汽车之家二手车插卡, enable=true
 
 [Map Local]
 # 抓包确认的广告创意、运营导航和广告服务接口；不匹配“我的”核心接口 mycardv8。

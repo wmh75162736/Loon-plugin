@@ -1,8 +1,8 @@
 #!name=音乐去广告
 #!desc=QQ音乐互动广告、波点音乐开屏广告精准拦截
 #!author=ChatGPT
-#!version=1.5
-#!date=2026-06-21
+#!version=1.5.1
+#!date=2026-06-23
 #!loon_version=3.4.0(962)
 
 [URL Rewrite]

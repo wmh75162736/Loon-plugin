@@ -46,12 +46,31 @@
     });
   }
 
+  function getQueryParam(rawUrl, name) {
+    const query = String(rawUrl || "").split("?")[1] || "";
+    const target = String(name || "").toLowerCase();
+
+    return query.split("&").reduce(function (result, part) {
+      if (result !== null) return result;
+
+      const index = part.indexOf("=");
+      const key = index === -1 ? part : part.slice(0, index);
+      if (key.toLowerCase() !== target) return null;
+
+      const value = index === -1 ? "" : part.slice(index + 1);
+      try {
+        return decodeURIComponent(value.replace(/\+/g, " "));
+      } catch (error) {
+        return value;
+      }
+    }, null);
+  }
+
   try {
     const payload = JSON.parse($response.body);
-    const parsedUrl = new URL(url);
 
     if (url.includes("/pageCard/queryPageCardData")) {
-      const pageTag = parsedUrl.searchParams.get("pagetag");
+      const pageTag = getQueryParam(url, "pagetag");
       if (blockedPageTags.has(pageTag)) {
         $done({ body: JSON.stringify(emptyCards) });
         return;
