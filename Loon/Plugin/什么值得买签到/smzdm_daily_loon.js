@@ -11,6 +11,9 @@ Task:
 
 var NAME = "什么值得买";
 var STORE_KEY = "smzdm_accounts";
+var RANDOM_STATE_KEY = "smzdm_random_checkin_state";
+var RANDOM_DELAY_MINUTES_MIN = 5;
+var RANDOM_DELAY_MINUTES_MAX = 60;
 var SIGN_KEY = "apr1$AwP!wRRT$gJ/q.X24poeBInlUJC";
 var APP_VERSION = "10.4.1";
 var SK = "ierkM0OZZbsuBKLoAgQ6OJneLMXBQXmzX+LXkNTuKch8Ui2jGlahuFyWIzBiDq/L";
@@ -31,9 +34,13 @@ async function main() {
     return;
   }
 
+  var gate = randomScheduleGate();
+  if (!gate.run) return;
+
   var accounts = loadAccounts();
   if (!accounts.length) {
     notify(NAME, "未找到 Cookie", "打开什么值得买 App，进入签到页并手动签到一次后再运行。");
+    markRandomScheduleDone(gate.state);
     return;
   }
 
@@ -50,6 +57,7 @@ async function main() {
   }
 
   notify(NAME, "签到完成", lines.join("\n"));
+  markRandomScheduleDone(gate.state);
 }
 
 function captureAccount() {
@@ -219,6 +227,66 @@ function loadAccounts() {
 
 function saveAccounts(accounts) {
   return storeWrite(JSON.stringify(accounts), STORE_KEY);
+}
+
+function randomScheduleGate() {
+  var now = new Date();
+  var today = formatDate(now);
+  var state = loadRandomScheduleState();
+  if (!state || state.date !== today) {
+    var delayMinutes = randomInt(RANDOM_DELAY_MINUTES_MIN, RANDOM_DELAY_MINUTES_MAX);
+    state = {
+      date: today,
+      delayMinutes: delayMinutes,
+      targetAt: now.getTime() + delayMinutes * 60 * 1000,
+      done: false,
+    };
+    storeWrite(JSON.stringify(state), RANDOM_STATE_KEY);
+    log("Random check-in target: " + formatTime(new Date(state.targetAt)) + " (delay " + delayMinutes + " min)");
+    return { run: false, state: state };
+  }
+  if (state.done) {
+    log("Random check-in already done today.");
+    return { run: false, state: state };
+  }
+  if (Date.now() < Number(state.targetAt)) {
+    log("Random check-in waits until " + formatTime(new Date(Number(state.targetAt))) + ".");
+    return { run: false, state: state };
+  }
+  return { run: true, state: state };
+}
+
+function loadRandomScheduleState() {
+  var text = storeRead(RANDOM_STATE_KEY);
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    return null;
+  }
+}
+
+function markRandomScheduleDone(state) {
+  if (!state) return;
+  state.done = true;
+  state.doneAt = Date.now();
+  storeWrite(JSON.stringify(state), RANDOM_STATE_KEY);
+}
+
+function randomInt(min, max) {
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+function formatDate(date) {
+  return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+}
+
+function formatTime(date) {
+  return pad(date.getHours()) + ":" + pad(date.getMinutes()) + ":" + pad(date.getSeconds());
+}
+
+function pad(value) {
+  return value < 10 ? "0" + value : String(value);
 }
 
 function findAccountIndex(accounts, cookie) {
