@@ -25,6 +25,8 @@ main()
     log("ERROR: " + (err && err.stack ? err.stack : err));
     if (typeof $request !== "undefined" && $request) {
       notify(NAME, "执行失败", String(err && err.message ? err.message : err));
+    } else if (OPTIONS.runMode === "manual") {
+      notify(NAME, "执行失败", String(err && err.message ? err.message : err));
     } else {
       notifyAuto("执行失败", String(err && err.message ? err.message : err), false);
     }
@@ -39,13 +41,18 @@ async function main() {
     return;
   }
 
-  var gate = randomScheduleGate();
+  var manualRun = OPTIONS.runMode === "manual";
+  var gate = manualRun ? { run: true, state: null } : randomScheduleGate();
   if (!gate.run) return;
 
   var accounts = loadAccounts();
   if (!accounts.length) {
-    notifyAuto("未找到 Cookie", "打开什么值得买 App，进入签到页并手动签到一次后再运行。", false);
-    markRandomScheduleDone(gate.state);
+    if (manualRun) {
+      notify(NAME, "未找到 Cookie", "打开什么值得买 App，进入签到页并手动签到一次后再运行。");
+    } else {
+      notifyAuto("未找到 Cookie", "打开什么值得买 App，进入签到页并手动签到一次后再运行。", false);
+      markRandomScheduleDone(gate.state);
+    }
     return;
   }
 
@@ -64,8 +71,13 @@ async function main() {
     }
   }
 
-  notifyAuto("签到完成", lines.join("\n"), allOk);
-  markRandomScheduleDone(gate.state);
+  if (manualRun) {
+    notify(NAME, "立即签到完成", lines.join("\n"));
+    if (allOk) markTodayDoneByManual();
+  } else {
+    notifyAuto("签到完成", lines.join("\n"), allOk);
+    markRandomScheduleDone(gate.state);
+  }
 }
 
 function captureAccount() {
@@ -252,6 +264,7 @@ function getRuntimeOptions() {
   }
 
   return {
+    runMode: normalizeRunMode(args.runMode),
     notifyMode: normalizeNotifyMode(args.notifyMode),
     minDelayMinutes: minDelay,
     maxDelayMinutes: maxDelay,
@@ -261,21 +274,59 @@ function getRuntimeOptions() {
 }
 
 function normalizeArgument(argument) {
-  if (!argument) return {};
-  if (typeof argument === "object") return argument;
-  if (typeof argument !== "string") return {};
+  var result = {
+    notifyMode: storeRead("notifyMode"),
+    minDelay: storeRead("minDelay"),
+    maxDelay: storeRead("maxDelay"),
+    queryReward: storeRead("queryReward"),
+    accountInterval: storeRead("accountInterval"),
+  };
+  if (!argument) return result;
+  if (typeof argument === "object") {
+    if (Object.prototype.toString.call(argument) === "[object Array]") {
+      var arrayKeys = ["runMode", "notifyMode", "minDelay", "maxDelay", "queryReward", "accountInterval"];
+      var offset = 0;
+      if (argument.length && String(argument[0]).toLowerCase() !== "auto" && String(argument[0]).toLowerCase() !== "manual") {
+        arrayKeys = ["notifyMode", "minDelay", "maxDelay", "queryReward", "accountInterval"];
+      }
+      for (var i = 0; i < arrayKeys.length && i + offset < argument.length; i++) {
+        result[arrayKeys[i]] = argument[i + offset];
+      }
+      return result;
+    }
+    for (var key in argument) {
+      if (Object.prototype.hasOwnProperty.call(argument, key)) result[key] = argument[key];
+    }
+    return result;
+  }
+  if (typeof argument !== "string") return result;
+  if (argument === "manual" || argument === "auto") {
+    result.runMode = argument;
+    return result;
+  }
   try {
     var parsed = JSON.parse(argument);
-    if (parsed && typeof parsed === "object") return parsed;
+    if (parsed && typeof parsed === "object") {
+      var parsedBase = normalizeArgument(parsed);
+      parsedBase.runMode = parsedBase.runMode || result.runMode;
+      return parsedBase;
+    }
   } catch (err) {}
 
-  var keys = ["notifyMode", "minDelay", "maxDelay", "queryReward", "accountInterval"];
+  var keys = ["runMode", "notifyMode", "minDelay", "maxDelay", "queryReward", "accountInterval"];
   var values = argument.split(",");
-  var result = {};
+  if (values.length && values[0] !== "manual" && values[0] !== "auto") {
+    keys = ["notifyMode", "minDelay", "maxDelay", "queryReward", "accountInterval"];
+  }
   for (var i = 0; i < keys.length && i < values.length; i++) {
     result[keys[i]] = values[i];
   }
   return result;
+}
+
+function normalizeRunMode(value) {
+  value = String(value || "auto").toLowerCase();
+  return value === "manual" ? "manual" : "auto";
 }
 
 function normalizeNotifyMode(value) {
@@ -339,6 +390,21 @@ function markRandomScheduleDone(state) {
   if (!state) return;
   state.done = true;
   state.doneAt = Date.now();
+  storeWrite(JSON.stringify(state), RANDOM_STATE_KEY);
+}
+
+function markTodayDoneByManual() {
+  var now = new Date();
+  var state = {
+    date: formatDate(now),
+    delayMinutes: 0,
+    minDelayMinutes: OPTIONS.minDelayMinutes,
+    maxDelayMinutes: OPTIONS.maxDelayMinutes,
+    targetAt: now.getTime(),
+    done: true,
+    doneAt: now.getTime(),
+    runMode: "manual",
+  };
   storeWrite(JSON.stringify(state), RANDOM_STATE_KEY);
 }
 
@@ -422,6 +488,10 @@ function storeWrite(value, key) {
 }
 
 function notifyAuto(subtitle, body, ok) {
+  if (OPTIONS.runMode === "manual") {
+    notify(NAME, subtitle, body);
+    return;
+  }
   if (OPTIONS.notifyMode === "never") return;
   if (OPTIONS.notifyMode === "failure" && ok) {
     log([NAME, subtitle, body].filter(Boolean).join(" - "));
