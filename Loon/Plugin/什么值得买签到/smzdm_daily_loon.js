@@ -325,7 +325,7 @@ function getRuntimeOptions() {
     queryReward: readBool(args.queryReward, true),
     accountIntervalSeconds: Math.max(0, readInt(args.accountInterval, 2)),
     accountAction: normalizeAccountAction(args.accountAction),
-    accountIndex: Math.max(1, readInt(args.accountIndex, 1)),
+    accountIndex: Math.max(1, readInt(cleanArgumentValue(args.accountIndex), 1)),
   };
 }
 
@@ -344,7 +344,7 @@ function normalizeArgument(argument) {
     if (Object.prototype.toString.call(argument) === "[object Array]") {
       var arrayKeys = ["runMode", "notifyMode", "minDelay", "maxDelay", "queryReward", "accountInterval"];
       var offset = 0;
-      var first = argument.length ? String(argument[0]).toLowerCase() : "";
+      var first = argument.length ? cleanArgumentValue(argument[0]).toLowerCase() : "";
       if (first === "manage") {
         result.runMode = argument[0];
         result.accountAction = argument[1];
@@ -398,13 +398,19 @@ function normalizeArgument(argument) {
 }
 
 function normalizeRunMode(value) {
-  value = String(value || "auto").toLowerCase();
+  value = cleanArgumentValue(value || "auto").toLowerCase();
   if (value === "manual" || value === "manage") return value;
   return "auto";
 }
 
 function normalizeAccountAction(value) {
-  return String(value || "list").toLowerCase() === "delete" ? "delete" : "list";
+  return cleanArgumentValue(value || "list").toLowerCase() === "delete" ? "delete" : "list";
+}
+
+function cleanArgumentValue(value) {
+  return String(value === undefined || value === null ? "" : value)
+    .trim()
+    .replace(/^[\[\]\s"']+|[\[\]\s"']+$/g, "");
 }
 
 function normalizeNotifyMode(value) {
