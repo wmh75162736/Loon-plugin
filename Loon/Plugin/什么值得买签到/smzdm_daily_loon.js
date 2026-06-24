@@ -41,6 +41,11 @@ async function main() {
     return;
   }
 
+  if (OPTIONS.runMode === "manage") {
+    manageAccounts();
+    return;
+  }
+
   var manualRun = OPTIONS.runMode === "manual";
   var gate = manualRun ? { run: true, state: null } : randomScheduleGate();
   if (!gate.run) return;
@@ -251,6 +256,55 @@ function saveAccounts(accounts) {
   return storeWrite(JSON.stringify(accounts), STORE_KEY);
 }
 
+function manageAccounts() {
+  var accounts = loadAccounts();
+  if (!accounts.length) {
+    notify(NAME, "账号管理", "当前没有已保存的账号。");
+    return;
+  }
+
+  if (OPTIONS.accountAction === "delete") {
+    var index = OPTIONS.accountIndex - 1;
+    if (index < 0 || index >= accounts.length) {
+      notify(NAME, "删除失败", "账号序号无效。当前已保存 " + accounts.length + " 个账号，请填写 1-" + accounts.length + "。");
+      return;
+    }
+
+    var removed = accounts.splice(index, 1)[0];
+    if (saveAccounts(accounts)) {
+      notify(NAME, "账号已删除", "已删除账号" + (index + 1) + "（" + accountLabel(removed) + "）。\n当前剩余 " + accounts.length + " 个账号。");
+    } else {
+      notify(NAME, "删除失败", "无法写入 Loon 持久化存储。");
+    }
+    return;
+  }
+
+  var lines = accounts.map(function (account, index) {
+    return "账号" + (index + 1) + "：" + accountLabel(account);
+  });
+  notify(NAME, "已保存 " + accounts.length + " 个账号", lines.join("\n"));
+}
+
+function accountLabel(account) {
+  var sess = getCookieValue(account.cookie, "sess");
+  var identifier = sess ? "sess " + maskValue(sess) : "会话标识不可用";
+  var updatedAt = formatUpdatedAt(account.updatedAt);
+  return identifier + (updatedAt ? "，更新于 " + updatedAt : "");
+}
+
+function maskValue(value) {
+  value = String(value || "");
+  if (value.length <= 8) return value.slice(0, 2) + "***";
+  return value.slice(0, 4) + "..." + value.slice(-4);
+}
+
+function formatUpdatedAt(value) {
+  if (!value) return "";
+  var date = new Date(value);
+  if (isNaN(date.getTime())) return "";
+  return formatDate(date) + " " + formatTime(date);
+}
+
 function getRuntimeOptions() {
   var args = normalizeArgument(typeof $argument !== "undefined" ? $argument : {});
   var minDelay = readInt(args.minDelay, RANDOM_DELAY_MINUTES_MIN);
@@ -270,6 +324,8 @@ function getRuntimeOptions() {
     maxDelayMinutes: maxDelay,
     queryReward: readBool(args.queryReward, true),
     accountIntervalSeconds: Math.max(0, readInt(args.accountInterval, 2)),
+    accountAction: normalizeAccountAction(args.accountAction),
+    accountIndex: Math.max(1, readInt(args.accountIndex, 1)),
   };
 }
 
@@ -280,13 +336,22 @@ function normalizeArgument(argument) {
     maxDelay: storeRead("maxDelay"),
     queryReward: storeRead("queryReward"),
     accountInterval: storeRead("accountInterval"),
+    accountAction: "list",
+    accountIndex: "1",
   };
   if (!argument) return result;
   if (typeof argument === "object") {
     if (Object.prototype.toString.call(argument) === "[object Array]") {
       var arrayKeys = ["runMode", "notifyMode", "minDelay", "maxDelay", "queryReward", "accountInterval"];
       var offset = 0;
-      if (argument.length && String(argument[0]).toLowerCase() !== "auto" && String(argument[0]).toLowerCase() !== "manual") {
+      var first = argument.length ? String(argument[0]).toLowerCase() : "";
+      if (first === "manage") {
+        result.runMode = argument[0];
+        result.accountAction = argument[1];
+        result.accountIndex = argument[2];
+        return result;
+      }
+      if (argument.length && first !== "auto" && first !== "manual") {
         arrayKeys = ["notifyMode", "minDelay", "maxDelay", "queryReward", "accountInterval"];
       }
       for (var i = 0; i < arrayKeys.length && i + offset < argument.length; i++) {
@@ -300,7 +365,7 @@ function normalizeArgument(argument) {
     return result;
   }
   if (typeof argument !== "string") return result;
-  if (argument === "manual" || argument === "auto") {
+  if (argument === "manual" || argument === "auto" || argument === "manage") {
     result.runMode = argument;
     return result;
   }
@@ -312,6 +377,14 @@ function normalizeArgument(argument) {
       return parsedBase;
     }
   } catch (err) {}
+
+  if (argument.indexOf("manage,") === 0) {
+    var manageValues = argument.split(",");
+    result.runMode = manageValues[0];
+    result.accountAction = manageValues[1];
+    result.accountIndex = manageValues[2];
+    return result;
+  }
 
   var keys = ["runMode", "notifyMode", "minDelay", "maxDelay", "queryReward", "accountInterval"];
   var values = argument.split(",");
@@ -326,7 +399,12 @@ function normalizeArgument(argument) {
 
 function normalizeRunMode(value) {
   value = String(value || "auto").toLowerCase();
-  return value === "manual" ? "manual" : "auto";
+  if (value === "manual" || value === "manage") return value;
+  return "auto";
+}
+
+function normalizeAccountAction(value) {
+  return String(value || "list").toLowerCase() === "delete" ? "delete" : "list";
 }
 
 function normalizeNotifyMode(value) {
