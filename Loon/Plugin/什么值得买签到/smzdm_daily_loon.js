@@ -378,6 +378,14 @@ function normalizeArgument(argument) {
     }
   } catch (err) {}
 
+  if (argument.indexOf("manage:") === 0) {
+    var manageParts = argument.split(":");
+    result.runMode = manageParts[0];
+    result.accountAction = manageParts[1];
+    result.accountIndex = manageParts[2];
+    return result;
+  }
+
   if (argument.indexOf("manage,") === 0) {
     var manageValues = argument.split(",");
     result.runMode = manageValues[0];
