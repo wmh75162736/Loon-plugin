@@ -18,4 +18,5 @@ cron "0 0 9 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loo
 cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=3600,tag=中视频_立即运行,argument="action=manual",enable=true
 cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=60,tag=中视频_保存账号,argument="action=save",enable=true
 cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=30,tag=中视频_查看状态,argument="action=status",enable=true
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=60,tag=中视频_测试登录,argument="action=loginTest",enable=true
 cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=30,tag=中视频_清除账号,argument="action=clear",enable=true

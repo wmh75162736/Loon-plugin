@@ -316,7 +316,7 @@ function showAccountStatus() {
   const cdk = readStore(CDK_STORE_KEY) || readStore("ZSP_CDK") || "";
   const message = [
     `账号配置: ${accounts.length > 0 ? `已保存 ${accounts.length} 个` : "未保存"}`,
-    accounts.length > 0 ? accounts.map((account) => `- ${account.remark} / secretId长度:${account.secretId.length} / secretKey长度:${account.secretKey.length} / deviceId长度:${account.deviceId.length}`).join("\n") : "",
+    accounts.length > 0 ? accounts.map((account) => `- ${account.remark} / secretId:${maskForLog(account.secretId)} / secretKey:${maskForLog(account.secretKey)} / deviceId:${maskForLog(account.deviceId)}`).join("\n") : "",
     `CDK: ${cdk ? "已保存/已配置" : "未配置"}`,
     `设备缓存: ${Object.keys(deviceCache || {}).length} 条`
   ].filter(Boolean).join("\n");
@@ -346,6 +346,10 @@ async function runEntry() {
   }
   if (runtimeConfig.action === "status") {
     showAccountStatus();
+    return;
+  }
+  if (runtimeConfig.action === "loginTest" || runtimeConfig.action === "testLogin") {
+    await testLoginOnly();
     return;
   }
   if (runtimeConfig.action === "clear") {
@@ -389,13 +393,17 @@ function wait(ms) {
 function httpRequest(options) {
   return new Promise((resolve, reject) => {
     const method = (options.method || "GET").toUpperCase();
+    const requestHeaders = Object.assign({}, options.headers || {});
     const request = {
       url: options.url,
-      headers: options.headers || {}
+      headers: requestHeaders
     };
 
     if (options.body !== undefined) {
-      request.body = options.body;
+      request.body = typeof options.body === "string" ? options.body : JSON.stringify(options.body);
+      if (!hasHeader(requestHeaders, "Content-Length")) {
+        requestHeaders["Content-Length"] = String(byteLength(request.body));
+      }
     }
 
     const callback = (error, response, data) => {
@@ -431,6 +439,20 @@ function httpRequest(options) {
       reject(new Error(`Loon 适配层暂不支持 ${method} 请求`));
     }
   });
+}
+
+function hasHeader(headers, name) {
+  const target = String(name).toLowerCase();
+  return Object.keys(headers || {}).some((key) => key.toLowerCase() === target);
+}
+
+function byteLength(value) {
+  const str = String(value || "");
+  try {
+    return unescape(encodeURIComponent(str)).length;
+  } catch (_) {
+    return str.length;
+  }
 }
 
 function decodeUnicode(str) {
@@ -474,9 +496,37 @@ function buildHeaders(account, token) {
   return headers;
 }
 
+function maskForLog(value) {
+  const str = cleanArgValue(value);
+  if (!str) return "空";
+  if (str.length <= 8) return `长度:${str.length}`;
+  return `${str.slice(0, 4)}***${str.slice(-4)}(长度:${str.length})`;
+}
+
 function notify(subtitle, message) {
   if (!runtimeConfig.notify || typeof $notification === "undefined") return;
   $notification.post(ENV_NAME, subtitle, message);
+}
+
+async function testLoginOnly() {
+  console.log("开始执行原版登录请求测试");
+  const accounts = loadAccounts();
+  if (accounts.length === 0) {
+    const message = "未找到已保存账号，请先运行“中视频_保存账号”。";
+    console.log(message);
+    notify("测试失败", message);
+    return;
+  }
+
+  const account = accounts[0];
+  console.log(`测试账号: ${account.remark}`);
+  console.log(`账号校验: secretId=${maskForLog(account.secretId)}, secretKey=${maskForLog(account.secretKey)}, deviceId=${maskForLog(account.deviceId)}`);
+  console.log("请求对比: URL/body/headers 与原青龙脚本 secretKeyLogin 保持一致");
+
+  const token = await login(account);
+  const message = token ? "登录测试成功，平台已返回 token。" : "登录测试失败，请查看日志里的 code/message。";
+  console.log(message);
+  notify(token ? "登录测试成功" : "登录测试失败", message);
 }
 
 async function main() {
@@ -688,6 +738,9 @@ async function login(account) {
     }
 
     console.log(`登录失败: code=${data.code}, message=${decodeUnicode(data.message || "未知错误")}`);
+    if (response.body) {
+      console.log(`登录响应体: ${String(response.body).substring(0, 300)}`);
+    }
     return null;
   } catch (error) {
     console.log(`登录请求失败: ${error.message}`);

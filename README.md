@@ -31,7 +31,8 @@ https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubuserconten
 3. 多账号使用 `zsp`，格式为 `备注#secretId#secretKey`，可追加 `#deviceId`。脚本也兼容 `备注＃secretId＃secretKey` 和 `备注%23secretId%23secretKey`。
 4. 多账号在 Loon 输入框里建议用 `||` 分隔，例如：`账号1#secretId#secretKey||账号2#secretId#secretKey#deviceId`。
 5. 填写或修改账号后，必须手动运行一次 `中视频_保存账号`。
-6. 再运行 `中视频_查看状态`，确认账号数量不是 0 后执行每日任务或立即运行。
+6. 再运行 `中视频_查看状态`，确认账号数量不是 0。
+7. 如需单独验证密钥，先运行 `中视频_测试登录`；确认成功后再执行每日任务或立即运行。
 
 功能：
 - 商户密钥登录并获取 `token`。
@@ -43,7 +44,7 @@ https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubuserconten
 - 连续 3 次广告任务异常后自动重新登录并继续。
 - 多账号顺序执行，账号之间默认等待 5 秒。
 - 任务结束后可发送运行摘要通知。
-- 支持查看和清除本地保存账号。
+- 支持查看、测试登录和清除本地保存账号。
 
 插件 Raw 地址：
 https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/%E4%B8%AD%E8%A7%86%E9%A2%91.plugin
