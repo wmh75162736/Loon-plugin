@@ -24,9 +24,9 @@ https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubuserconten
 登录方式：
 1. 先在中视频平台完成注册、本人认证，并获取商户密钥。
 2. 商户密钥通常包含 `secretId` 和 `secretKey`，这是脚本登录接口使用的凭据。
-3. 单账号推荐在 Loon 插件设置里分别填写 `账号备注`、`secretId`、`secretKey`，可选填写 `固定设备码`。这种方式比 `备注#secretId#secretKey` 更直观，也避免 `#` 解析问题。
-4. 多账号使用 `zsp` 高级配置，格式：`备注#secretId#secretKey`。
-5. 多账号固定设备码格式：`备注#secretId#secretKey#deviceId`。不填写 `deviceId` 时，脚本会首次自动生成 32 位设备码并写入 Loon `$persistentStore`，后续固定复用。
+3. 在 Loon 导入插件后，进入插件参数页，填写 `账号配置`。
+4. 单账号格式：`备注#secretId#secretKey`。
+5. 固定设备码格式：`备注#secretId#secretKey#deviceId`。不填写 `deviceId` 时，脚本会首次自动生成 32 位设备码并写入 Loon `$persistentStore`，后续固定复用。
 6. 多账号可用换行 `\n` 或 `||` 分隔，例如：`账号1#secretId#secretKey||账号2#secretId#secretKey#deviceId`。
 7. 如果 Loon 参数页对 `#` 解析异常，可把 `#` 写成 `%23`。
 
@@ -42,17 +42,14 @@ https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubuserconten
 - 任务结束后可发送运行摘要通知，可通过 `notify` 开关控制。
 
 插件参数：
-- `accountRemark`：账号备注，单账号使用，默认 `默认账号`。
-- `secretId`：商户密钥中的 `secretId`，单账号推荐填写。
-- `secretKey`：商户密钥中的 `secretKey`，单账号推荐填写。
-- `deviceId`：固定设备码，可选，留空时自动生成并本地保存。
-- `zsp`：多账号高级配置，可选。格式为 `备注#secretId#secretKey`，可追加 `#deviceId`。填写后优先使用此项。
+- `zsp`：账号配置，必填。格式为 `备注#secretId#secretKey`，可追加 `#deviceId`。
 - `ZSP_CDK`：CDK 兑换码，可选，留空则跳过兑换。
 - `maxAds`：广告任务次数，默认 `50`。
 - `notify`：运行通知开关，默认开启。
 
 注意事项：
-- 单账号用独立字段更好；多账号用 `zsp` 更好，并兼容原青龙脚本格式。
+- 账号配置已恢复为最初的 `zsp` 单字段提交方式。
+- 最新脚本会自动忽略 `{zsp}`、`{ZSP_CDK}` 这类 Loon 未替换的空参数占位符。
 - 广告任务会按接口返回的视频时长真实等待，完整运行可能耗时较长，插件超时已设置为 `3600` 秒。
 - 如账号失效、密钥错误、平台接口变更或网络异常，脚本会在 Loon 日志中输出失败原因。
 - 该插件是定时任务，不需要配置 MITM。
