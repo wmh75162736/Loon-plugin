@@ -1,0 +1,14 @@
+#!name=中视频
+#!desc=中视频 Loon 专用定时任务。由青龙 Node 脚本重构，保留登录、签到、CDK、抽奖、广告任务、多账号和固定设备码逻辑。
+#!author=wmh75162736
+#!homepage=https://github.com/wmh75162736/Loon-plugin/tree/main/Loon/Plugin/Video
+#!loon_version=3.4.0(962)
+
+[Argument]
+zsp = input,"",tag=账号配置,desc=格式：备注#secretId#secretKey，可追加 #deviceId。多账号可用 \n 或 || 分隔；若导入后参数异常，可把 # 写成 %23。
+ZSP_CDK = input,"",tag=CDK兑换码,desc=可选。留空则跳过 CDK 兑换。
+maxAds = input,"50",tag=广告次数,desc=默认 50。任务耗时较长，插件超时已设为 3600 秒。
+notify = switch,true,tag=运行通知,desc=任务结束后发送运行摘要通知。
+
+[Script]
+cron "0 0 9 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=3600,tag=中视频,argument=zsp={zsp},ZSP_CDK={ZSP_CDK},maxAds={maxAds},notify={notify}
