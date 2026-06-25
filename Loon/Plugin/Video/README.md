@@ -19,20 +19,36 @@ https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video
 README Raw 地址：
 https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/README.md
 
+## 推荐填写方式
+
+推荐单账号直接在 Loon 插件设置里分开填写：
+
+- `账号备注`：用于日志和通知，例如 `主号`。
+- `secretId`：商户密钥中的 `secretId`。
+- `secretKey`：商户密钥中的 `secretKey`。
+- `固定设备码`：可选。留空时首次运行自动生成并本地保存。
+
+这种方式比 `备注#secretId#secretKey` 更适合 Loon 设置页：不需要手动处理 `#`，也更不容易填错。
+
+多账号时仍然使用 `zsp` 高级配置，因为 Loon 插件参数面板不适合动态生成多组 `secretId/secretKey` 输入。脚本会优先读取 `zsp`；如果 `zsp` 为空，才读取独立的 `secretId` 和 `secretKey` 字段。
+
 ## 登录方式
 
 1. 先在中视频平台完成注册、本人认证，并获取商户密钥。
 2. 商户密钥通常包含 `secretId` 和 `secretKey`，脚本通过这两个字段调用登录接口获取 `token`。
-3. 在 Loon 导入插件后，进入插件参数页，填写 `zsp` 账号配置。
-4. 单账号格式：`备注#secretId#secretKey`。
-5. 固定设备码格式：`备注#secretId#secretKey#deviceId`。
+3. 单账号推荐在插件参数页分别填写 `账号备注`、`secretId`、`secretKey`，可选填写 `固定设备码`。
+4. 多账号填写 `zsp`，格式：`备注#secretId#secretKey`。
+5. 多账号固定设备码格式：`备注#secretId#secretKey#deviceId`。
 6. 多账号可用换行 `\n` 或 `||` 分隔。
 7. 如果 Loon 参数页对 `#` 解析异常，可把 `#` 写成 `%23`。
 
-示例：
+单账号推荐示例：
 
 ```text
-账号1#secretId#secretKey
+账号备注：主号
+secretId：你的secretId
+secretKey：你的secretKey
+固定设备码：留空或填写已有deviceId
 ```
 
 多账号示例：
@@ -52,11 +68,15 @@ URL 编码示例：
 - 脚本会为每组 `secretId + secretKey` 绑定一个设备码。
 - 如果账号配置里没有填写 `deviceId`，首次运行会自动生成 32 位设备码。
 - 自动生成的设备码会保存到 Loon 的 `$persistentStore`，后续运行固定复用。
-- 如果你已经有固定设备码，可按 `备注#secretId#secretKey#deviceId` 填写。
+- 如果你已经有固定设备码，单账号可填入 `固定设备码` 参数，多账号可按 `备注#secretId#secretKey#deviceId` 填写。
 
 ## 插件参数
 
-- `zsp`：账号配置，必填。格式为 `备注#secretId#secretKey`，可追加 `#deviceId`。
+- `accountRemark`：账号备注，单账号使用，默认 `默认账号`。
+- `secretId`：商户密钥中的 `secretId`，单账号推荐填写。
+- `secretKey`：商户密钥中的 `secretKey`，单账号推荐填写。
+- `deviceId`：固定设备码，可选。留空时自动生成并本地保存。
+- `zsp`：多账号高级配置，可选。格式为 `备注#secretId#secretKey`，可追加 `#deviceId`。填写后优先使用此项。
 - `ZSP_CDK`：CDK 兑换码，可选。留空时跳过兑换。
 - `maxAds`：广告任务次数，默认 `50`。
 - `notify`：运行摘要通知开关，默认开启。
@@ -101,7 +121,9 @@ cron "0 0 9 * * *"
 
 ### 提示未找到有效账号配置
 
-检查 Loon 插件参数里的 `zsp` 是否为空，格式是否为：
+单账号请检查 `secretId` 和 `secretKey` 是否都已填写。
+
+多账号请检查 `zsp` 是否为空，格式是否为：
 
 ```text
 备注#secretId#secretKey
@@ -112,6 +134,12 @@ cron "0 0 9 * * *"
 ```text
 备注%23secretId%23secretKey
 ```
+
+### 应该用独立字段还是 zsp
+
+单账号用独立字段更好，填写更直观，也避免 `#` 的解析问题。
+
+多账号用 `zsp` 更好，因为可以一次维护多组账号，并兼容原青龙脚本的账号格式。
 
 ### 登录失败
 
