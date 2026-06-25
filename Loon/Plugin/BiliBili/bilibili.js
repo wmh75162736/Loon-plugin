@@ -21,6 +21,7 @@ var DEFAULT_UA =
 
 var API = {
   nav: "https://api.bilibili.com/x/web-interface/nav",
+  coinBalance: "https://account.bilibili.com/site/getCoin",
   dailyReward: "https://api.bilibili.com/x/member/web/exp/reward",
   coinTodayExp: "https://api.bilibili.com/x/web-interface/coin/today/exp",
   ranking: "https://api.bilibili.com/x/web-interface/ranking/v2?rid=0&type=all",
@@ -28,6 +29,7 @@ var API = {
   videoHeartbeat: "https://api.bilibili.com/x/click-interface/web/heartbeat",
   shareVideo: "https://api.bilibili.com/x/web-interface/share/add",
   addCoin: "https://api.bilibili.com/x/web-interface/coin/add",
+  archiveCoins: "https://api.bilibili.com/x/web-interface/archive/coins",
   liveSign: "https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/DoSign",
   liveWalletStatus: "https://api.live.bilibili.com/xlive/revenue/v1/wallet/getStatus",
   silver2coin: "https://api.live.bilibili.com/xlive/revenue/v1/wallet/silver2coin",
@@ -119,6 +121,41 @@ function pickField(data, lower, upper, fallback) {
   if (typeof data[lower] !== "undefined") return data[lower];
   if (typeof data[upper] !== "undefined") return data[upper];
   return fallback;
+}
+
+function section(results, name) {
+  results.push("----开始 " + name + " ----");
+}
+
+function vipTypeName(type, status) {
+  if (Number(status) !== 1) return "无会员";
+  if (Number(type) === 2) return "年度大会员";
+  if (Number(type) === 1) return "月度大会员";
+  return "大会员";
+}
+
+function vipStatusName(status) {
+  return Number(status) === 1 ? "正常" : "未开通/已过期";
+}
+
+function levelInfo(user) {
+  var info = user && user.level_info ? user.level_info : {};
+  return {
+    level: Number(info.current_level || info.Current_level || 0),
+    currentExp: Number(info.current_exp || info.Current_exp || 0),
+    nextExp: info.next_exp || info.Next_exp || ""
+  };
+}
+
+function formatMoney(value) {
+  var n = Number(value);
+  return isNaN(n) ? "unknown" : String(Math.floor(n * 100) / 100);
+}
+
+function clamp(value, min, max) {
+  value = Number(value);
+  if (isNaN(value)) return min;
+  return Math.max(min, Math.min(max, value));
 }
 
 function request(method, options) {
@@ -243,64 +280,98 @@ function shouldRunNow(manual) {
 }
 
 async function loginCheck(results) {
+  section(results, "登录");
   var res = await get(API.nav, { Referer: "https://www.bilibili.com/", Origin: "https://www.bilibili.com" });
   var data = res.data || {};
   if (data.code === 0 && data.data) {
-    if (data.data.mid) write(STORE.uid, data.data.mid);
-    results.push("登录: " + (data.data.uname || data.data.mid || "ok"));
+    var user = data.data;
+    RUN_CACHE.user = user;
+    if (user.mid) write(STORE.uid, user.mid);
+    var level = levelInfo(user);
+    results.push("【用户名】" + (user.uname || user.mid || "unknown"));
+    results.push("【会员类型】" + vipTypeName(user.vipType, user.vipStatus));
+    results.push("【会员状态】" + vipStatusName(user.vipStatus));
+    results.push("【硬币余额】" + formatMoney(user.money));
+    results.push("【当前经验】" + level.currentExp);
+    if (level.level >= 6) results.push("您已是 Lv6，大佬模式");
+    else results.push("【当前等级】Lv" + level.level + " -> " + level.nextExp);
+    results.push("登录成功，经验+5 √");
+    return user;
   } else {
     results.push(shortResult("登录", data));
+    return null;
   }
 }
 
-async function dailyReward(results) {
+async function getDailyTaskStatus() {
   var reward = await get(API.dailyReward, {
     Referer: "https://account.bilibili.com/account/home",
     Origin: "https://account.bilibili.com"
   });
-  if (reward.data && reward.data.code === 0 && reward.data.data) {
-    var info = reward.data.data;
-    var login = pickField(info, "login", "Login", false);
-    var watch = pickField(info, "watch", "Watch", false);
-    var share = pickField(info, "share", "Share", false);
-    var coins = pickField(info, "coins", "Coins", 0);
-    results.push(
-      "每日任务状态: 登录" +
-        doneMark(login) +
-        " 观看" +
-        doneMark(watch) +
-        " 分享" +
-        doneMark(share) +
-        " 投币" +
-        coins +
-        "枚"
-    );
-  } else {
-    results.push(shortResult("每日任务状态", reward.data));
-  }
-  var coinExp = await get(API.coinTodayExp, { Referer: "https://www.bilibili.com/", Origin: "https://www.bilibili.com" });
-  if (coinExp.data && coinExp.data.code === 0) {
-    var suffix = boolOpt("taskDonateCoin", false) ? "" : "（投币任务未开启）";
-    results.push("今日投币经验: " + coinExp.data.data + suffix);
-  }
-  else results.push(shortResult("投币经验", coinExp.data));
+  if (!reward.data || reward.data.code !== 0 || !reward.data.data) return { ok: false, response: reward.data };
+  var info = reward.data.data;
+  return {
+    ok: true,
+    login: !!pickField(info, "login", "Login", false),
+    watch: !!pickField(info, "watch", "Watch", false),
+    share: !!pickField(info, "share", "Share", false),
+    coins: Number(pickField(info, "coins", "Coins", 0) || 0),
+    raw: info
+  };
 }
 
-async function getVideoForRun() {
-  if (RUN_CACHE.video) return RUN_CACHE.video;
+function pushDailyTaskStatus(results, status) {
+  if (!status || !status.ok) {
+    results.push(shortResult("每日任务状态", status && status.response));
+    return;
+  }
+  results.push(
+    "每日任务状态: 登录" +
+      doneMark(status.login) +
+      " 观看" +
+      doneMark(status.watch) +
+      " 分享" +
+      doneMark(status.share) +
+      " 投币" +
+      status.coins +
+      "枚"
+  );
+}
 
+async function getCoinTodayExp() {
+  var coinExp = await get(API.coinTodayExp, { Referer: "https://www.bilibili.com/", Origin: "https://www.bilibili.com" });
+  if (coinExp.data && coinExp.data.code === 0) return Number(coinExp.data.data || 0);
+  return 0;
+}
+
+async function dailyReward(results) {
+  var status = await getDailyTaskStatus();
+  pushDailyTaskStatus(results, status);
+  var exp = await getCoinTodayExp();
+  if (exp >= 0) {
+    var suffix = boolOpt("taskDonateCoin", false) ? "" : "（投币任务未开启）";
+    results.push("今日投币经验: " + exp + suffix);
+  }
+}
+
+async function getRankingList() {
+  if (RUN_CACHE.rankingList && RUN_CACHE.rankingList.length) return RUN_CACHE.rankingList;
   var rank = await get(API.ranking, { Referer: "https://www.bilibili.com/", Origin: "https://www.bilibili.com" });
   var data = rank.data && rank.data.data;
   var list = data && (data.list || data);
   if (!list || !list.length) throw new Error(shortResult("选择视频", rank.data));
+  RUN_CACHE.rankingList = list;
+  return list;
+}
 
-  var item = list[randomInt(0, Math.min(list.length, 10) - 1)] || list[0];
+async function hydrateVideo(item) {
   var video = {
     aid: item.aid || item.av,
     bvid: item.bvid || item.bv_id || "",
     title: item.title || "公开视频",
     cid: item.cid || "",
-    duration: Number(item.duration || 0)
+    duration: Number(item.duration || 0),
+    copyright: Number(item.copyright || 0)
   };
   if (!video.aid) throw new Error("选择视频: 缺少 aid");
 
@@ -313,30 +384,46 @@ async function getVideoForRun() {
     video.bvid = detailData.bvid || video.bvid;
     video.title = detailData.title || video.title;
     video.duration = Number(detailData.duration || video.duration || 0);
+    video.copyright = Number(detailData.copyright || video.copyright || 0);
     if (detailData.pages && detailData.pages.length) video.cid = detailData.pages[0].cid || video.cid;
   }
+  return video;
+}
+
+async function getVideoForRun() {
+  if (RUN_CACHE.video) return RUN_CACHE.video;
+  var list = await getRankingList();
+  var item = list[randomInt(0, Math.min(list.length, 10) - 1)] || list[0];
+  var video = await hydrateVideo(item);
 
   RUN_CACHE.video = video;
   return video;
 }
 
-async function videoWatch(results) {
+async function getDonateCandidateVideo() {
+  var list = await getRankingList();
+  RUN_CACHE.triedDonateAids = RUN_CACHE.triedDonateAids || {};
+  for (var i = 0; i < Math.min(list.length, 30); i++) {
+    var item = list[randomInt(0, Math.min(list.length, 30) - 1)] || list[i];
+    var aid = item.aid || item.av;
+    if (!aid || RUN_CACHE.triedDonateAids[aid]) continue;
+    RUN_CACHE.triedDonateAids[aid] = true;
+    return hydrateVideo(item);
+  }
+  return null;
+}
+
+function videoReferer(video) {
+  return video.bvid ? "https://www.bilibili.com/video/" + video.bvid : "https://www.bilibili.com/video/av" + video.aid;
+}
+
+async function uploadHeartbeat(video, played) {
   var csrf = read(STORE.csrf);
   var mid = read(STORE.uid) || getCookiePart(read(STORE.cookie), "DedeUserID");
-  if (!csrf) {
-    results.push("观看视频: 缺少 csrf");
-    return;
-  }
-  if (!mid) {
-    results.push("观看视频: 缺少 UID");
-    return;
-  }
-  var video = await getVideoForRun();
-  var played = randomInt(45, 90);
-  if (video.duration > 0) played = Math.min(played, Math.max(1, video.duration - 1));
+  if (!csrf) return { data: { code: "NA", message: "缺少 csrf" } };
+  if (!mid) return { data: { code: "NA", message: "缺少 UID" } };
   var now = Math.floor(Date.now() / 1000);
-  var referer = video.bvid ? "https://www.bilibili.com/video/" + video.bvid : "https://www.bilibili.com/video/av" + video.aid;
-  var res = await postForm(
+  return postForm(
     API.videoHeartbeat + "?aid=" + encodeURIComponent(video.aid) + "&played_time=" + encodeURIComponent(played),
     {
       aid: video.aid,
@@ -352,20 +439,28 @@ async function videoWatch(results) {
       dt: 2,
       play_type: 3
     },
-    { Referer: referer, Origin: "https://www.bilibili.com" }
+    { Referer: videoReferer(video), Origin: "https://www.bilibili.com" }
   );
+}
+
+async function videoWatch(results, video) {
+  video = video || (await getVideoForRun());
+  var open = await uploadHeartbeat(video, 0);
+  if (!open.data || open.data.code !== 0) results.push(shortResult("打开视频", open.data));
+
+  var played = randomInt(1, Math.max(2, Math.min(video.duration || 15, 15)));
+  var res = await uploadHeartbeat(video, played);
   if (res.data && res.data.code === 0) results.push("观看视频: 成功，已上报 " + played + " 秒");
   else results.push(shortResult("观看视频", res.data));
 }
 
-async function videoShare(results) {
+async function videoShare(results, video) {
   var csrf = read(STORE.csrf);
   if (!csrf) {
     results.push("分享视频: 缺少 csrf");
     return;
   }
-  var video = await getVideoForRun();
-  var referer = video.bvid ? "https://www.bilibili.com/video/" + video.bvid : "https://www.bilibili.com/video/av" + video.aid;
+  video = video || (await getVideoForRun());
   var res = await postForm(
     API.shareVideo,
     {
@@ -376,21 +471,84 @@ async function videoShare(results) {
       source: "web_normal",
       ga: 1
     },
-    { Referer: referer, Origin: "https://www.bilibili.com" }
+    { Referer: videoReferer(video), Origin: "https://www.bilibili.com" }
   );
   if (res.data && res.data.code === 0) results.push("分享视频: 成功");
   else results.push(shortResult("分享视频", res.data));
 }
 
-async function donateCoin(results) {
+async function watchAndShareVideo(results, status) {
+  section(results, "观看、分享视频");
+  if (!status || !status.ok) status = await getDailyTaskStatus();
+  if (status && status.ok && status.watch && status.share) {
+    results.push("今天已经观看过了，不需要再看啦");
+    results.push("今天已经分享过了，不用再分享啦");
+    return;
+  }
+
+  var video = await getVideoForRun();
+  results.push("【随机视频】" + video.title);
+  var watched = false;
+  if (boolOpt("taskVideoWatch", true)) {
+    if (status && status.ok && status.watch) results.push("今天已经观看过了，不需要再看啦");
+    else {
+      await videoWatch(results, video);
+      watched = true;
+    }
+  }
+  if (boolOpt("taskVideoShare", true)) {
+    if (status && status.ok && status.share) results.push("今天已经分享过了，不用再分享啦");
+    else {
+      if (!watched) await uploadHeartbeat(video, 0);
+      await videoShare(results, video);
+    }
+  }
+}
+
+async function getCoinBalance(user) {
+  var res = await get(API.coinBalance, {
+    Host: "account.bilibili.com",
+    Referer: "https://account.bilibili.com/account/coin",
+    Origin: "https://account.bilibili.com"
+  });
+  if (res.data && res.data.code === 0 && res.data.data) return Number(res.data.data.money || res.data.data.Money || 0);
+  if (user && typeof user.money !== "undefined") return Number(user.money || 0);
+  return 0;
+}
+
+async function getDonatedCoinsForVideo(video) {
+  var res = await get(API.archiveCoins + "?aid=" + encodeURIComponent(video.aid) + "&jsonp=jsonp", {
+    Referer: videoReferer(video),
+    Origin: "https://www.bilibili.com"
+  });
+  if (res.data && res.data.code === 0 && res.data.data) return Number(res.data.data.multiply || res.data.data.Multiply || 0);
+  return 2;
+}
+
+async function getCanDonateVideo() {
+  for (var i = 0; i < 6; i++) {
+    var video = await getDonateCandidateVideo();
+    if (!video) return null;
+    var already = await getDonatedCoinsForVideo(video);
+    var limit = Number(video.copyright) === 1 ? 2 : 1;
+    if (already < limit) {
+      video.canDonate = limit - already;
+      return video;
+    }
+  }
+  return null;
+}
+
+function donateCanContinue(code) {
+  return ["0", "-400", "10003", "34002", "34003", "34004", "34005"].indexOf(String(code)) >= 0;
+}
+
+async function donateCoinOnce(results, video, multiply) {
   var csrf = read(STORE.csrf);
   if (!csrf) {
     results.push("投币: 缺少 csrf");
-    return;
+    return false;
   }
-  var video = await getVideoForRun();
-  var multiply = Math.max(1, Math.min(2, readInt(OPTIONS.coinCount, 1)));
-  var referer = video.bvid ? "https://www.bilibili.com/video/" + video.bvid : "https://www.bilibili.com/video/av" + video.aid;
   var res = await postForm(
     API.addCoin,
     {
@@ -404,10 +562,81 @@ async function donateCoin(results) {
       source: "web_normal",
       ga: 1
     },
-    { Referer: referer, Origin: "https://www.bilibili.com" }
+    { Referer: videoReferer(video), Origin: "https://www.bilibili.com" }
   );
-  if (res.data && res.data.code === 0) results.push("投币: 成功，已投 " + multiply + " 枚");
-  else results.push(shortResult("投币", res.data));
+  if (res.data && res.data.code === 0) {
+    results.push("投币成功，经验+" + multiply * 10 + " √");
+    return true;
+  }
+  results.push(shortResult("投币", res.data));
+  if (!donateCanContinue(res.data && res.data.code)) throw new Error("投币发生未预计异常");
+  return false;
+}
+
+async function donateCoins(results, user) {
+  section(results, "投币");
+  var target = readInt(OPTIONS.coinTarget || OPTIONS.coinCount, 5);
+  target = clamp(target, 0, 5);
+  if (target <= 0) {
+    results.push("已配置为跳过投币任务");
+    return;
+  }
+
+  var level = levelInfo(user || RUN_CACHE.user);
+  if (boolOpt("saveCoinsWhenLv6", false) && level.level >= 6) {
+    results.push("已经为 LV6，按配置跳过投币");
+    return;
+  }
+
+  var alreadyExp = await getCoinTodayExp();
+  var alreadyCoins = Math.floor(alreadyExp / 10);
+  var needCoins = Math.max(0, target - alreadyCoins);
+  results.push("【今日已投】" + alreadyCoins + "枚");
+  results.push("【目标欲投】" + target + "枚");
+  results.push("【还需再投】" + needCoins + "枚");
+  if (needCoins <= 0) {
+    results.push("已完成投币任务，不需要再投啦~");
+    return;
+  }
+
+  var protectedCoins = Math.max(0, readInt(OPTIONS.protectedCoins, 0));
+  var balance = await getCoinBalance(user || RUN_CACHE.user);
+  results.push("【投币前余额】 : " + formatMoney(balance));
+  if (balance <= 0) {
+    results.push("因硬币余额不足，今日暂不执行投币任务");
+    return;
+  }
+  if (balance <= protectedCoins) {
+    results.push("因硬币余额达到或低于保留值，今日暂不执行投币任务");
+    return;
+  }
+  if (balance < needCoins) {
+    needCoins = Math.floor(balance);
+    results.push("因硬币余额不足，目标投币数调整为: " + needCoins);
+  }
+  if (balance - needCoins <= protectedCoins) {
+    var unprotectedCoins = Math.floor(balance - protectedCoins);
+    if (unprotectedCoins !== needCoins) {
+      needCoins = Math.max(0, unprotectedCoins);
+      results.push("因硬币余额投币后将达到或低于保留值，目标投币数调整为: " + needCoins);
+    }
+  }
+  if (needCoins <= 0) return;
+
+  var success = 0;
+  var tryCount = clamp(readInt(OPTIONS.maxDonateTries, 6), 1, 10);
+  for (var i = 1; i <= tryCount && success < needCoins; i++) {
+    var video = await getCanDonateVideo();
+    if (!video) continue;
+    results.push("【视频】" + video.title);
+    var multiply = Math.min(1, needCoins - success, video.canDonate || 1);
+    if (await donateCoinOnce(results, video, multiply)) success += multiply;
+  }
+  if (success >= needCoins) results.push("视频投币任务完成");
+  else results.push("投币尝试超过" + tryCount + "次，已终止");
+
+  var afterBalance = await getCoinBalance(user || RUN_CACHE.user);
+  results.push("【硬币余额】" + formatMoney(afterBalance));
 }
 
 async function liveSign(results) {
@@ -494,11 +723,22 @@ async function runTasks(manual) {
   if (csrf) write(STORE.csrf, csrf);
 
   var results = [];
-  var tasks = [loginCheck];
-  if (boolOpt("taskVideoWatch", true)) tasks.push(videoWatch);
-  if (boolOpt("taskVideoShare", true)) tasks.push(videoShare);
-  if (boolOpt("taskDonateCoin", false)) tasks.push(donateCoin);
-  if (boolOpt("taskDailyReward", true)) tasks.push(dailyReward);
+  var user = null;
+  var status = null;
+  try {
+    user = await loginCheck(results);
+    status = await getDailyTaskStatus();
+    if (boolOpt("taskVideoWatch", true) || boolOpt("taskVideoShare", true)) await watchAndShareVideo(results, status);
+    if (boolOpt("taskDonateCoin", false)) await donateCoins(results, user);
+    if (boolOpt("taskDailyReward", true)) {
+      section(results, "每日任务状态");
+      await dailyReward(results);
+    }
+  } catch (error) {
+    results.push("DailyTask: " + String(error));
+  }
+
+  var tasks = [];
   if (boolOpt("taskLiveSign", true)) tasks.push(liveSign);
   if (boolOpt("taskMangaSign", true)) tasks.push(mangaSign);
   if (boolOpt("taskMangaReward", false)) tasks.push(mangaVipReward);
@@ -514,7 +754,7 @@ async function runTasks(manual) {
     }
   }
 
-  var hasFailure = /: (?!0(?:\s|$))[-\dNA]+|失败|缺少|未配置|非法|下线|不能|Error/i.test(results.join("\n"));
+  var hasFailure = /失败|缺少|未配置|非法|下线|不能|异常|终止|Error|NA/i.test(results.join("\n"));
   var summary = results.join("\n");
   write(STORE.lastRun, new Date().toISOString());
   if (!manual) write(STORE.lastRunDate, todayString());
