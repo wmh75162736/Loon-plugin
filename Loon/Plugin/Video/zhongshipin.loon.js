@@ -2,16 +2,10 @@
 中视频 - Loon 专用脚本
 
 参数示例：
-accountRemark=备注
-secretId=商户secretId
-secretKey=商户secretKey
-
-多账号高级格式：
 zsp=备注%23secretId%23secretKey
 zsp=账号1%23secretId%23secretKey%0A账号2%23secretId%23secretKey%23固定deviceId
 
 可选参数：
-deviceId=固定设备码
 ZSP_CDK=兑换码
 maxAds=50
 notify=1
@@ -85,11 +79,17 @@ function parseArguments(raw) {
     const rawKey = index >= 0 ? part.slice(0, index) : part;
     const rawValue = index >= 0 ? part.slice(index + 1) : "";
     const key = safeDecode(rawKey).trim();
-    const value = safeDecode(rawValue);
+    const value = cleanArgValue(safeDecode(rawValue));
     if (key) args[key] = value;
   });
 
   return args;
+}
+
+function cleanArgValue(value) {
+  const str = String(value || "").trim();
+  if (/^\{[^{}]+\}$/.test(str)) return "";
+  return str;
 }
 
 function safeDecode(value) {
@@ -103,13 +103,13 @@ function safeDecode(value) {
 function loadRuntimeConfig() {
   const args = parseArguments(typeof $argument === "string" ? $argument : "");
   runtimeConfig.accountRemark =
-    (args.accountRemark || args.remark || readStore("ZSP_REMARK") || "默认账号").trim();
+    cleanArgValue(args.accountRemark || args.remark || readStore("ZSP_REMARK") || "默认账号");
   runtimeConfig.secretId =
-    (args.secretId || readStore("ZSP_SECRET_ID") || "").trim();
+    cleanArgValue(args.secretId || readStore("ZSP_SECRET_ID") || "");
   runtimeConfig.secretKey =
-    (args.secretKey || readStore("ZSP_SECRET_KEY") || "").trim();
+    cleanArgValue(args.secretKey || readStore("ZSP_SECRET_KEY") || "");
   runtimeConfig.deviceId =
-    (args.deviceId || readStore("ZSP_DEVICE_ID") || "").trim();
+    cleanArgValue(args.deviceId || readStore("ZSP_DEVICE_ID") || "");
 
   runtimeConfig.zsp =
     args.ZSP ||
@@ -133,7 +133,7 @@ function loadRuntimeConfig() {
   }
 
   runtimeConfig.cdk =
-    (args.ZSP_CDK || args.zsp_cdk || readStore("ZSP_CDK") || "").trim();
+    cleanArgValue(args.ZSP_CDK || args.zsp_cdk || readStore("ZSP_CDK") || "");
 
   runtimeConfig.maxAds = parsePositiveInt(args.maxAds || args.MAX_ADS || readStore("ZSP_MAX_ADS"), 50);
   runtimeConfig.delayMin = parsePositiveInt(args.delayMin || readStore("ZSP_DELAY_MIN"), 3000);
@@ -276,7 +276,7 @@ async function main() {
   const accounts = loadAccounts();
 
   if (accounts.length === 0) {
-    const message = "未找到有效账号配置，请检查 secretId/secretKey 或 zsp/ZSP 参数。";
+    const message = "未找到有效账号配置，请检查 zsp/ZSP 参数。";
     console.log(message);
     notify("运行失败", message);
     return;
@@ -314,7 +314,7 @@ function loadAccounts() {
   const envValue = normalizeAccountConfig(runtimeConfig.zsp);
 
   if (!envValue) {
-    console.log("请设置 secretId/secretKey，或填写 zsp/ZSP 多账号参数。");
+    console.log("请设置 zsp/ZSP 账号配置。");
     return accounts;
   }
 
