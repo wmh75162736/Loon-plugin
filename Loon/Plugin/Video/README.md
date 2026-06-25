@@ -71,6 +71,16 @@ secretKey：你的 secretKey
 
 重要：每日任务不会直接读取插件设置里的 `secretId/secretKey`，它只读取“保存账号”写入的本地存储。修改账号后必须重新运行一次 `中视频_保存账号`。
 
+## Loon 3.4.0 兼容说明
+
+Loon 官方文档中，脚本 `argument` 建议整体使用双引号，例如 `argument = "name=loon&version=2.1.0"`；插件输入项的值也可以在脚本里通过 `$persistentStore.read(参数名)` 读取。
+
+因此当前版本同时做了两层兼容：
+
+- 插件里的 `argument` 已改为整段双引号格式。
+- 脚本会直接读取插件设置键：`accountRemark`、`secretId`、`secretKey`、`deviceId`、`zsp`、`ZSP_CDK`、`maxAds`、`notify`。
+- 如果 Loon 没有把 `{zsp}` 替换进 `$argument`，保存账号仍会从 `$persistentStore.read("zsp")` 等插件设置键读取。
+
 ## 功能
 
 - secretId / secretKey 登录
@@ -111,4 +121,4 @@ secretKey：你的 secretKey
 5. 多账号必须带备注，格式是 `备注#secretId#secretKey`。如果半角 `#` 在 Loon 里保存异常，可改用 `备注＃secretId＃secretKey` 或 `备注%23secretId%23secretKey`。
 6. 仍然异常时，运行 `中视频_清除账号`，重新填写并保存。
 
-这版脚本已经避免每日 cron 直接携带 `#secretId#secretKey`，因为 Loon 的插件参数层在部分情况下会把未替换占位符或 `#` 分隔内容传坏。账号先保存到 `$persistentStore` 后，每日任务读取本地存储执行。
+这版脚本已经避免每日 cron 直接依赖 `#secretId#secretKey` 参数传递，因为 Loon 的插件参数层在部分情况下会把未替换占位符或 `#` 分隔内容传坏。账号先保存到 `$persistentStore` 后，每日任务读取本地存储执行。

@@ -69,6 +69,14 @@ function readStore(key) {
   }
 }
 
+function readFirstStore(keys) {
+  for (const key of keys) {
+    const value = cleanArgValue(readStore(key));
+    if (value) return value;
+  }
+  return "";
+}
+
 function writeStore(value, key) {
   try {
     return $persistentStore.write(value, key);
@@ -79,6 +87,7 @@ function writeStore(value, key) {
 
 function parseArguments(raw) {
   const args = {};
+  raw = cleanArgValue(raw);
   if (!raw || typeof raw !== "string") return args;
 
   if (raw.indexOf("=") < 0 && raw.indexOf("#") > 0) {
@@ -120,19 +129,18 @@ function loadRuntimeConfig() {
   const args = parseArguments(typeof $argument === "string" ? $argument : "");
   runtimeConfig.action = cleanArgValue(args.action || "auto") || "auto";
   runtimeConfig.accountRemark =
-    cleanArgValue(args.accountRemark || args.remark || readStore("ZSP_REMARK") || "默认账号");
+    cleanArgValue(args.accountRemark || args.remark || readFirstStore(["accountRemark", "remark", "ZSP_REMARK"]) || "默认账号");
   runtimeConfig.secretId =
-    cleanArgValue(args.secretId || readStore("ZSP_SECRET_ID") || "");
+    cleanArgValue(args.secretId || readFirstStore(["secretId", "ZSP_SECRET_ID"]) || "");
   runtimeConfig.secretKey =
-    cleanArgValue(args.secretKey || readStore("ZSP_SECRET_KEY") || "");
+    cleanArgValue(args.secretKey || readFirstStore(["secretKey", "ZSP_SECRET_KEY"]) || "");
   runtimeConfig.deviceId =
-    cleanArgValue(args.deviceId || readStore("ZSP_DEVICE_ID") || "");
+    cleanArgValue(args.deviceId || readFirstStore(["deviceId", "ZSP_DEVICE_ID"]) || "");
 
-  const inputZsp = cleanArgValue(args.ZSP || args.zsp || args.AD_WATCH_ACCOUNTS || "");
+  const inputZsp = cleanArgValue(args.ZSP || args.zsp || args.AD_WATCH_ACCOUNTS || readFirstStore(["zsp", "ZSP_INPUT", "AD_WATCH_ACCOUNTS_INPUT"]) || "");
   const storedZsp =
     readStore(ACCOUNT_STORE_KEY) ||
     readStore("ZSP") ||
-    readStore("zsp") ||
     readStore("AD_WATCH_ACCOUNTS") ||
     "";
   runtimeConfig.zsp = runtimeConfig.action === "save" ? inputZsp : (inputZsp || storedZsp);
@@ -155,15 +163,15 @@ function loadRuntimeConfig() {
     cleanArgValue(
       args.ZSP_CDK ||
       args.zsp_cdk ||
+      readFirstStore(["ZSP_CDK", "zsp_cdk", "cdk"]) ||
       readStore(CDK_STORE_KEY) ||
-      readStore("ZSP_CDK") ||
       ""
     );
 
-  runtimeConfig.maxAds = parsePositiveInt(args.maxAds || args.MAX_ADS || readStore("ZSP_MAX_ADS"), 50);
+  runtimeConfig.maxAds = parsePositiveInt(args.maxAds || args.MAX_ADS || readFirstStore(["maxAds", "ZSP_MAX_ADS"]), 50);
   runtimeConfig.delayMin = parsePositiveInt(args.delayMin || readStore("ZSP_DELAY_MIN"), 3000);
   runtimeConfig.delayMax = parsePositiveInt(args.delayMax || readStore("ZSP_DELAY_MAX"), 6000);
-  const notifyValue = String(cleanArgValue(args.notify || readStore("ZSP_NOTIFY") || "1")).toLowerCase();
+  const notifyValue = String(cleanArgValue(args.notify || readFirstStore(["notify", "ZSP_NOTIFY"]) || "1")).toLowerCase();
   runtimeConfig.notify = !["0", "false", "off", "no"].includes(notifyValue);
 
   if (runtimeConfig.delayMax < runtimeConfig.delayMin) {
@@ -172,6 +180,21 @@ function loadRuntimeConfig() {
 }
 
 function buildAccountConfigFromArgs() {
+  const hasSeparateFields =
+    runtimeConfig.secretId &&
+    runtimeConfig.secretKey &&
+    !isAccountConfig(runtimeConfig.secretId) &&
+    !isAccountConfig(runtimeConfig.secretKey);
+  if (hasSeparateFields) {
+    const parts = [
+      runtimeConfig.accountRemark || "默认账号",
+      runtimeConfig.secretId,
+      runtimeConfig.secretKey
+    ];
+    if (runtimeConfig.deviceId && !isAccountConfig(runtimeConfig.deviceId)) parts.push(runtimeConfig.deviceId);
+    return parts.join("#");
+  }
+
   const zsp = findAccountConfigCandidate(
     runtimeConfig.zsp,
     runtimeConfig.accountRemark,
@@ -271,10 +294,8 @@ function saveAccountConfig() {
   const normalized = normalizeAccountConfig(config);
   writeStore(normalized, ACCOUNT_STORE_KEY);
   writeStore(normalized, "ZSP");
-  writeStore(normalized, "zsp");
   if (runtimeConfig.cdk) {
     writeStore(runtimeConfig.cdk, CDK_STORE_KEY);
-    writeStore(runtimeConfig.cdk, "ZSP_CDK");
   }
   saveCache();
 
@@ -285,7 +306,7 @@ function saveAccountConfig() {
 
 function showAccountStatus() {
   loadCache();
-  const config = readStore(ACCOUNT_STORE_KEY) || readStore("ZSP") || readStore("zsp") || "";
+  const config = readStore(ACCOUNT_STORE_KEY) || readStore("ZSP") || "";
   const accounts = parseAccountsFromConfig(config, { useCache: false });
   const cdk = readStore(CDK_STORE_KEY) || readStore("ZSP_CDK") || "";
   const message = [
@@ -301,10 +322,8 @@ function showAccountStatus() {
 function clearAccountConfig() {
   writeStore("", ACCOUNT_STORE_KEY);
   writeStore("", "ZSP");
-  writeStore("", "zsp");
   writeStore("", "AD_WATCH_ACCOUNTS");
   writeStore("", CDK_STORE_KEY);
-  writeStore("", "ZSP_CDK");
   const message = "已清除本地保存的账号配置和 CDK。设备码缓存保留，避免下次重新生成设备。";
   console.log(message);
   notify("已清除", message);

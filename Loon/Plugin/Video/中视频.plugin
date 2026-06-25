@@ -18,8 +18,8 @@ maxAds = input,"50",tag=广告次数,desc=默认 50。任务耗时较长，插�
 notify = switch,true,tag=运行通知,desc=任务结束后发送运行摘要通知。
 
 [Script]
-cron "0 0 9 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=3600,tag=中视频_每日任务,argument=action=auto,maxAds={maxAds},notify={notify},ZSP_CDK={ZSP_CDK},enable={dailyTasks}
-cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=3600,tag=中视频_立即运行,argument=action=manual,maxAds={maxAds},notify={notify},ZSP_CDK={ZSP_CDK},enable={manualRun}
-cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=60,tag=中视频_保存账号,argument=action=save,accountRemark="{accountRemark}",secretId="{secretId}",secretKey="{secretKey}",deviceId="{deviceId}",zsp="{zsp}",ZSP_CDK="{ZSP_CDK}",enable={accountTools}
-cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=30,tag=中视频_查看状态,argument=action=status,enable={accountTools}
-cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=30,tag=中视频_清除账号,argument=action=clear,enable={accountTools}
+cron "0 0 9 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=3600,tag=中视频_每日任务,argument="action=auto,maxAds={maxAds},notify={notify},ZSP_CDK={ZSP_CDK}",enable={dailyTasks}
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=3600,tag=中视频_立即运行,argument="action=manual,maxAds={maxAds},notify={notify},ZSP_CDK={ZSP_CDK}",enable={manualRun}
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=60,tag=中视频_保存账号,argument="action=save,accountRemark={accountRemark},secretId={secretId},secretKey={secretKey},deviceId={deviceId},zsp={zsp},ZSP_CDK={ZSP_CDK}",enable={accountTools}
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=30,tag=中视频_查看状态,argument="action=status",enable={accountTools}
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=30,tag=中视频_清除账号,argument="action=clear",enable={accountTools}
