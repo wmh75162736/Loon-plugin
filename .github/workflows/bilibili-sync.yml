@@ -1,0 +1,130 @@
+name: Sync BiliBiliToolPro API Layout
+
+on:
+  workflow_dispatch:
+  schedule:
+    # UTC 20:30 = Asia/Shanghai 04:30
+    - cron: "30 20 * * *"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Checkout upstream
+        uses: actions/checkout@v4
+        with:
+          repository: RayWangQvQ/BiliBiliToolPro
+          ref: main
+          path: upstream
+          fetch-depth: 1
+
+      - name: Inspect upstream API definitions
+        id: inspect
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import pathlib
+          import re
+
+          root = pathlib.Path("upstream/src/Ray.BiliBiliTool.Agent/BiliBiliAgent/Interfaces")
+          watched = [
+              "IUserInfoApi.cs",
+              "IDailyTaskApi.cs",
+              "ILiveApi.cs",
+              "IMangaApi.cs",
+              "IMallApi.cs",
+              "IVipBigPointApi.cs",
+              "IVideoApi.cs",
+          ]
+
+          manifest = {}
+          for name in watched:
+              path = root / name
+              text = path.read_text(encoding="utf-8-sig")
+              routes = re.findall(r'\[Http(?:Get|Post)\("([^"]+)"\)\]', text)
+              hosts = re.findall(r'\[Header\("Host",\s*"([^"]+)"\)\]', text)
+              manifest[name] = {
+                  "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+                  "hosts": sorted(set(hosts)),
+                  "routes": routes,
+              }
+
+          out = pathlib.Path("BiliBili/upstream-api-manifest.json")
+          new_text = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
+          old_text = out.read_text(encoding="utf-8") if out.exists() else ""
+          out.write_text(new_text, encoding="utf-8")
+          print("changed=" + str(old_text != new_text).lower())
+          PY
+
+      - name: Refresh script metadata when upstream changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPSTREAM_SHA="$(git -C upstream rev-parse --short HEAD)"
+          {
+            echo "/* upstream: RayWangQvQ/BiliBiliToolPro@${UPSTREAM_SHA} */"
+            sed '/^\/\* upstream: RayWangQvQ\/BiliBiliToolPro@/d' BiliBili/scripts/bilibili.js
+          } > /tmp/bilibili.js
+          mv /tmp/bilibili.js BiliBili/scripts/bilibili.js
+
+      - name: Build Pages artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp BiliBili/bilibili.plugin dist/bilibili.plugin
+          cp BiliBili/scripts/bilibili.js dist/bilibili.js
+          cp BiliBili/upstream-api-manifest.json dist/upstream-api-manifest.json
+          cat > dist/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>BiliBili Loon</title>
+          <h1>BiliBili Loon</h1>
+          <ul>
+            <li><a href="./bilibili.plugin">bilibili.plugin</a></li>
+            <li><a href="./bilibili.js">bilibili.js</a></li>
+            <li><a href="./upstream-api-manifest.json">upstream-api-manifest.json</a></li>
+          </ul>
+          HTML
+
+      - name: Commit sync result
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: sync upstream API manifest"
+          file_pattern: "BiliBili/scripts/bilibili.js BiliBili/upstream-api-manifest.json"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+
+      - name: Publish rolling release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: latest
+          body: "Automated build from the latest tracked BiliBiliToolPro API layout."
+          files: |
+            dist/bilibili.plugin
+            dist/bilibili.js
+            dist/upstream-api-manifest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
