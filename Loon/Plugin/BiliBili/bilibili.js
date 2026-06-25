@@ -105,8 +105,20 @@ function safeJson(body) {
 
 function shortResult(name, response) {
   var code = response && typeof response.code !== "undefined" ? response.code : "NA";
-  var msg = response && (response.message || response.msg) ? response.message || response.msg : "ok";
+  if (String(code) === "0") return name + ": 成功";
+  var msg = response && (response.message || response.msg) ? response.message || response.msg : "失败";
   return name + ": " + code + " " + msg;
+}
+
+function doneMark(value) {
+  return value ? "已完成" : "未完成";
+}
+
+function pickField(data, lower, upper, fallback) {
+  if (!data) return fallback;
+  if (typeof data[lower] !== "undefined") return data[lower];
+  if (typeof data[upper] !== "undefined") return data[upper];
+  return fallback;
 }
 
 function request(method, options) {
@@ -246,9 +258,31 @@ async function dailyReward(results) {
     Referer: "https://account.bilibili.com/account/home",
     Origin: "https://account.bilibili.com"
   });
-  results.push(shortResult("每日经验状态", reward.data));
+  if (reward.data && reward.data.code === 0 && reward.data.data) {
+    var info = reward.data.data;
+    var login = pickField(info, "login", "Login", false);
+    var watch = pickField(info, "watch", "Watch", false);
+    var share = pickField(info, "share", "Share", false);
+    var coins = pickField(info, "coins", "Coins", 0);
+    results.push(
+      "每日任务状态: 登录" +
+        doneMark(login) +
+        " 观看" +
+        doneMark(watch) +
+        " 分享" +
+        doneMark(share) +
+        " 投币" +
+        coins +
+        "枚"
+    );
+  } else {
+    results.push(shortResult("每日任务状态", reward.data));
+  }
   var coinExp = await get(API.coinTodayExp, { Referer: "https://www.bilibili.com/", Origin: "https://www.bilibili.com" });
-  if (coinExp.data && coinExp.data.code === 0) results.push("投币经验: " + coinExp.data.data);
+  if (coinExp.data && coinExp.data.code === 0) {
+    var suffix = boolOpt("taskDonateCoin", false) ? "" : "（投币任务未开启）";
+    results.push("今日投币经验: " + coinExp.data.data + suffix);
+  }
   else results.push(shortResult("投币经验", coinExp.data));
 }
 
@@ -320,7 +354,8 @@ async function videoWatch(results) {
     },
     { Referer: referer, Origin: "https://www.bilibili.com" }
   );
-  results.push(shortResult("观看视频", res.data));
+  if (res.data && res.data.code === 0) results.push("观看视频: 成功，已上报 " + played + " 秒");
+  else results.push(shortResult("观看视频", res.data));
 }
 
 async function videoShare(results) {
@@ -343,7 +378,8 @@ async function videoShare(results) {
     },
     { Referer: referer, Origin: "https://www.bilibili.com" }
   );
-  results.push(shortResult("分享视频", res.data));
+  if (res.data && res.data.code === 0) results.push("分享视频: 成功");
+  else results.push(shortResult("分享视频", res.data));
 }
 
 async function donateCoin(results) {
@@ -370,7 +406,8 @@ async function donateCoin(results) {
     },
     { Referer: referer, Origin: "https://www.bilibili.com" }
   );
-  results.push(shortResult("投币", res.data));
+  if (res.data && res.data.code === 0) results.push("投币: 成功，已投 " + multiply + " 枚");
+  else results.push(shortResult("投币", res.data));
 }
 
 async function liveSign(results) {
@@ -458,10 +495,10 @@ async function runTasks(manual) {
 
   var results = [];
   var tasks = [loginCheck];
-  if (boolOpt("taskDailyReward", true)) tasks.push(dailyReward);
   if (boolOpt("taskVideoWatch", true)) tasks.push(videoWatch);
   if (boolOpt("taskVideoShare", true)) tasks.push(videoShare);
   if (boolOpt("taskDonateCoin", false)) tasks.push(donateCoin);
+  if (boolOpt("taskDailyReward", true)) tasks.push(dailyReward);
   if (boolOpt("taskLiveSign", true)) tasks.push(liveSign);
   if (boolOpt("taskMangaSign", true)) tasks.push(mangaSign);
   if (boolOpt("taskMangaReward", false)) tasks.push(mangaVipReward);
