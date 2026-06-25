@@ -1,6 +1,11 @@
 /*
 中视频 - Loon 专用脚本
 
+推荐用法：
+1. 在插件设置中填写 secretId / secretKey，或填写 zsp 多账号配置。
+2. 手动运行“中视频_保存账号”，账号会写入 Loon 持久化存储。
+3. 每日任务和立即运行任务只读取已保存账号，避免 Loon 参数层截断 # 分隔符。
+
 参数示例：
 zsp=备注%23secretId%23secretKey
 zsp=账号1%23secretId%23secretKey%0A账号2%23secretId%23secretKey%23固定deviceId
@@ -18,9 +23,12 @@ const ENV_NAME = "中视频";
 const USER_AGENT = "Mozilla/5.0 (Linux; Android 15; 23013RK75C Build/AQ3A.250226.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0.6778.260 Mobile Safari/537.36 (Immersed/39.42857) Html5Plus/1.0";
 const BASE_URL = "https://api.qarfmkp.cn";
 const CACHE_KEY = "zsp.device_cache.v1";
+const ACCOUNT_STORE_KEY = "zsp.accounts.v1";
+const CDK_STORE_KEY = "zsp.cdk.v1";
 
 let deviceCache = {};
 let runtimeConfig = {
+  action: "auto",
   zsp: "",
   accountRemark: "",
   secretId: "",
@@ -73,6 +81,11 @@ function parseArguments(raw) {
   const args = {};
   if (!raw || typeof raw !== "string") return args;
 
+  if (raw.indexOf("=") < 0 && raw.indexOf("#") > 0) {
+    args.zsp = cleanArgValue(safeDecode(raw));
+    return args;
+  }
+
   raw.split(/[&,]/).forEach((part) => {
     if (!part) return;
     const index = part.indexOf("=");
@@ -94,7 +107,7 @@ function cleanArgValue(value) {
 
 function safeDecode(value) {
   try {
-    return decodeURIComponent(String(value).replace(/\+/g, "%20"));
+    return decodeURIComponent(String(value));
   } catch (_) {
     return String(value);
   }
@@ -102,6 +115,7 @@ function safeDecode(value) {
 
 function loadRuntimeConfig() {
   const args = parseArguments(typeof $argument === "string" ? $argument : "");
+  runtimeConfig.action = cleanArgValue(args.action || "auto") || "auto";
   runtimeConfig.accountRemark =
     cleanArgValue(args.accountRemark || args.remark || readStore("ZSP_REMARK") || "默认账号");
   runtimeConfig.secretId =
@@ -112,13 +126,28 @@ function loadRuntimeConfig() {
     cleanArgValue(args.deviceId || readStore("ZSP_DEVICE_ID") || "");
 
   runtimeConfig.zsp =
-    args.ZSP ||
-    args.zsp ||
-    args.AD_WATCH_ACCOUNTS ||
-    readStore("ZSP") ||
-    readStore("zsp") ||
-    readStore("AD_WATCH_ACCOUNTS") ||
-    "";
+    cleanArgValue(
+      args.ZSP ||
+      args.zsp ||
+      args.AD_WATCH_ACCOUNTS ||
+      readStore(ACCOUNT_STORE_KEY) ||
+      readStore("ZSP") ||
+      readStore("zsp") ||
+      readStore("AD_WATCH_ACCOUNTS") ||
+      ""
+    );
+
+  if (runtimeConfig.action !== "save") {
+    runtimeConfig.zsp =
+      readStore(ACCOUNT_STORE_KEY) ||
+      readStore("ZSP") ||
+      readStore("zsp") ||
+      readStore("AD_WATCH_ACCOUNTS") ||
+      runtimeConfig.zsp ||
+      "";
+  }
+
+  runtimeConfig.zsp = cleanArgValue(runtimeConfig.zsp);
 
   if (!runtimeConfig.zsp && runtimeConfig.secretId && runtimeConfig.secretKey) {
     const parts = [
@@ -133,16 +162,156 @@ function loadRuntimeConfig() {
   }
 
   runtimeConfig.cdk =
-    cleanArgValue(args.ZSP_CDK || args.zsp_cdk || readStore("ZSP_CDK") || "");
+    cleanArgValue(
+      args.ZSP_CDK ||
+      args.zsp_cdk ||
+      readStore(CDK_STORE_KEY) ||
+      readStore("ZSP_CDK") ||
+      ""
+    );
 
   runtimeConfig.maxAds = parsePositiveInt(args.maxAds || args.MAX_ADS || readStore("ZSP_MAX_ADS"), 50);
   runtimeConfig.delayMin = parsePositiveInt(args.delayMin || readStore("ZSP_DELAY_MIN"), 3000);
   runtimeConfig.delayMax = parsePositiveInt(args.delayMax || readStore("ZSP_DELAY_MAX"), 6000);
-  runtimeConfig.notify = String(args.notify || readStore("ZSP_NOTIFY") || "1") !== "0";
+  const notifyValue = String(cleanArgValue(args.notify || readStore("ZSP_NOTIFY") || "1")).toLowerCase();
+  runtimeConfig.notify = !["0", "false", "off", "no"].includes(notifyValue);
 
   if (runtimeConfig.delayMax < runtimeConfig.delayMin) {
     runtimeConfig.delayMax = runtimeConfig.delayMin;
   }
+}
+
+function buildAccountConfigFromArgs() {
+  const zsp = normalizeAccountConfig(runtimeConfig.zsp);
+  if (zsp) return zsp;
+  if (!runtimeConfig.secretId || !runtimeConfig.secretKey) return "";
+
+  const parts = [
+    runtimeConfig.accountRemark || "默认账号",
+    runtimeConfig.secretId,
+    runtimeConfig.secretKey
+  ];
+  if (runtimeConfig.deviceId) parts.push(runtimeConfig.deviceId);
+  return parts.join("#");
+}
+
+function parseAccountsFromConfig(config, options) {
+  options = options || {};
+  const useCache = options.useCache !== false;
+  const accounts = [];
+  const envValue = normalizeAccountConfig(config);
+
+  if (!envValue) return accounts;
+
+  const accountStrs = envValue.split("\n").filter((str) => str.trim());
+
+  for (const str of accountStrs) {
+    const parts = str.split("#");
+    if (parts.length >= 3) {
+      const remark = parts[0] || "未命名账号";
+      const secretId = parts[1];
+      const secretKey = parts[2];
+      const cacheKey = `${secretId}_${secretKey}`;
+      let deviceId;
+
+      if (parts[3] && parts[3].trim()) {
+        deviceId = parts[3].trim();
+        if (useCache) deviceCache[cacheKey] = deviceId;
+      } else if (useCache && deviceCache[cacheKey]) {
+        deviceId = deviceCache[cacheKey];
+        console.log("读取已固定设备码");
+      } else {
+        deviceId = createDevice();
+        if (useCache) {
+          deviceCache[cacheKey] = deviceId;
+          console.log("首次生成设备码，已永久保存");
+        }
+      }
+
+      accounts.push({ remark, secretId, secretKey, deviceId });
+      console.log(`加载账号: ${remark}`);
+    } else {
+      console.log(`忽略格式错误的账号配置: ${str}`);
+    }
+  }
+
+  return accounts;
+}
+
+function saveAccountConfig() {
+  loadCache();
+  const config = buildAccountConfigFromArgs();
+  const accounts = parseAccountsFromConfig(config, { useCache: true });
+
+  if (accounts.length === 0) {
+    const raw = typeof $argument === "string" ? $argument : "";
+    const message = [
+      "账号保存失败：未解析到有效账号。",
+      "请填写 secretId/secretKey，或在多账号配置里填写：备注#secretId#secretKey。",
+      raw ? `当前参数: ${raw}` : ""
+    ].filter(Boolean).join("\n");
+    console.log(message);
+    notify("保存失败", message);
+    return;
+  }
+
+  const normalized = normalizeAccountConfig(config);
+  writeStore(normalized, ACCOUNT_STORE_KEY);
+  writeStore(normalized, "ZSP");
+  writeStore(normalized, "zsp");
+  if (runtimeConfig.cdk) {
+    writeStore(runtimeConfig.cdk, CDK_STORE_KEY);
+    writeStore(runtimeConfig.cdk, "ZSP_CDK");
+  }
+  saveCache();
+
+  const message = `已保存 ${accounts.length} 个账号。\n${accounts.map((account) => `- ${account.remark}`).join("\n")}`;
+  console.log(message);
+  notify("保存成功", message);
+}
+
+function showAccountStatus() {
+  loadCache();
+  const config = readStore(ACCOUNT_STORE_KEY) || readStore("ZSP") || readStore("zsp") || "";
+  const accounts = parseAccountsFromConfig(config, { useCache: false });
+  const cdk = readStore(CDK_STORE_KEY) || readStore("ZSP_CDK") || "";
+  const message = [
+    `账号配置: ${accounts.length > 0 ? `已保存 ${accounts.length} 个` : "未保存"}`,
+    accounts.length > 0 ? accounts.map((account) => `- ${account.remark}`).join("\n") : "",
+    `CDK: ${cdk ? "已保存/已配置" : "未配置"}`,
+    `设备缓存: ${Object.keys(deviceCache || {}).length} 条`
+  ].filter(Boolean).join("\n");
+  console.log(message);
+  notify("账号状态", message);
+}
+
+function clearAccountConfig() {
+  writeStore("", ACCOUNT_STORE_KEY);
+  writeStore("", "ZSP");
+  writeStore("", "zsp");
+  writeStore("", "AD_WATCH_ACCOUNTS");
+  writeStore("", CDK_STORE_KEY);
+  writeStore("", "ZSP_CDK");
+  const message = "已清除本地保存的账号配置和 CDK。设备码缓存保留，避免下次重新生成设备。";
+  console.log(message);
+  notify("已清除", message);
+}
+
+async function runEntry() {
+  loadRuntimeConfig();
+  if (runtimeConfig.action === "save") {
+    saveAccountConfig();
+    return;
+  }
+  if (runtimeConfig.action === "status") {
+    showAccountStatus();
+    return;
+  }
+  if (runtimeConfig.action === "clear") {
+    clearAccountConfig();
+    return;
+  }
+  await main();
 }
 
 function parsePositiveInt(value, fallback) {
@@ -272,11 +441,10 @@ function notify(subtitle, message) {
 async function main() {
   console.log(`脚本开始运行，时间: ${new Date().toLocaleString()}\n`);
 
-  loadRuntimeConfig();
   const accounts = loadAccounts();
 
   if (accounts.length === 0) {
-    const message = "未找到有效账号配置，请检查 zsp/ZSP 参数。";
+    const message = "未找到有效账号配置，请先运行“中视频_保存账号”。";
     console.log(message);
     notify("运行失败", message);
     return;
@@ -310,42 +478,11 @@ async function main() {
 
 function loadAccounts() {
   loadCache();
-  const accounts = [];
-  const envValue = normalizeAccountConfig(runtimeConfig.zsp);
+  const accounts = parseAccountsFromConfig(runtimeConfig.zsp, { useCache: true });
 
-  if (!envValue) {
-    console.log("请设置 zsp/ZSP 账号配置。");
+  if (accounts.length === 0) {
+    console.log("请先在插件设置里填写账号，然后运行“中视频_保存账号”。");
     return accounts;
-  }
-
-  const accountStrs = envValue.split("\n").filter((str) => str.trim());
-
-  for (const str of accountStrs) {
-    const parts = str.split("#");
-    if (parts.length >= 3) {
-      const remark = parts[0] || "未命名账号";
-      const secretId = parts[1];
-      const secretKey = parts[2];
-      const cacheKey = `${secretId}_${secretKey}`;
-      let deviceId;
-
-      if (parts[3] && parts[3].trim()) {
-        deviceId = parts[3].trim();
-        deviceCache[cacheKey] = deviceId;
-      } else if (deviceCache[cacheKey]) {
-        deviceId = deviceCache[cacheKey];
-        console.log("读取已固定设备码");
-      } else {
-        deviceId = createDevice();
-        deviceCache[cacheKey] = deviceId;
-        console.log("首次生成设备码，已永久保存");
-      }
-
-      accounts.push({ remark, secretId, secretKey, deviceId });
-      console.log(`加载账号: ${remark}`);
-    } else {
-      console.log(`忽略格式错误的账号配置: ${str}`);
-    }
   }
 
   saveCache();
@@ -773,7 +910,7 @@ async function endVideoPlay(token, account, playRecordId) {
 }
 
 if (isLoonRuntime()) {
-  main()
+  runEntry()
     .then(safeDone)
     .catch((error) => {
       console.log(`脚本异常: ${error.message}`);

@@ -19,40 +19,29 @@ https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubuserconten
 
 ## 中视频
 
-说明：由青龙 Node 脚本无损重构为 Loon 专用定时任务，用于中视频账号的自动化日常任务。脚本只在 Loon 环境中运行，入口会检查 `$httpClient`、`$persistentStore`、`$done`，避免误放到青龙或普通 Node.js 环境执行。账号、设备码缓存和运行配置只保存在 Loon 本地或插件参数中，不会上传到 GitHub。
+说明：由青龙 Node 脚本无损重构为 Loon 专用定时任务，用于中视频账号自动化日常任务。脚本只在 Loon 环境运行，入口会检查 `$httpClient`、`$persistentStore`、`$done`，避免误放到青龙或普通 Node.js 环境执行。
+
+本版已改为“先保存账号、再运行任务”的 Loon 专用流程。插件设置里的 `secretId/secretKey` 或多账号 `zsp` 需要先通过 `中视频_保存账号` 写入 Loon 本地 `$persistentStore`，每日任务和立即运行任务只读取已保存账号，避免 Loon 参数层把 `#secretId#secretKey` 或空占位符传坏。
 
 登录方式：
 1. 先在中视频平台完成注册、本人认证，并获取商户密钥。
-2. 商户密钥通常包含 `secretId` 和 `secretKey`，这是脚本登录接口使用的凭据。
-3. 在 Loon 导入插件后，进入插件参数页，填写 `账号配置`。
-4. 单账号格式：`备注#secretId#secretKey`。
-5. 固定设备码格式：`备注#secretId#secretKey#deviceId`。不填写 `deviceId` 时，脚本会首次自动生成 32 位设备码并写入 Loon `$persistentStore`，后续固定复用。
-6. 多账号可用换行 `\n` 或 `||` 分隔，例如：`账号1#secretId#secretKey||账号2#secretId#secretKey#deviceId`。
-7. 如果 Loon 参数页对 `#` 解析异常，可把 `#` 写成 `%23`。
+2. 单账号推荐在插件设置里分别填写 `secretId` 和 `secretKey`。
+3. 多账号使用 `多账号配置`，格式为 `备注#secretId#secretKey`，可追加 `#deviceId`。
+4. 多账号在 Loon 输入框里建议用 `||` 分隔，例如：`账号1#secretId#secretKey||账号2#secretId#secretKey#deviceId`。
+5. 填写或修改账号后，必须手动运行一次 `中视频_保存账号`。
+6. 再运行 `中视频_查看状态`，确认账号数量不是 0 后执行每日任务或立即运行。
 
 功能：
 - 商户密钥登录并获取 `token`。
 - 每日签到，已签到时自动继续后续任务。
-- 可选 CDK 自动兑换，参数名为 `ZSP_CDK`。
+- 可选 CDK 自动兑换。
 - 每日抽奖，抽奖次数用完时自动跳过。
 - 自动获取广告、上报播放开始、按广告时长等待、上报播放结束。
-- 默认最多执行 50 次广告任务，可在 `maxAds` 参数中调整。
+- 默认最多执行 50 次广告任务，可在 `广告次数` 参数中调整。
 - 连续 3 次广告任务异常后自动重新登录并继续。
 - 多账号顺序执行，账号之间默认等待 5 秒。
-- 任务结束后可发送运行摘要通知，可通过 `notify` 开关控制。
-
-插件参数：
-- `zsp`：账号配置，必填。格式为 `备注#secretId#secretKey`，可追加 `#deviceId`。
-- `ZSP_CDK`：CDK 兑换码，可选，留空则跳过兑换。
-- `maxAds`：广告任务次数，默认 `50`。
-- `notify`：运行通知开关，默认开启。
-
-注意事项：
-- 账号配置已恢复为最初的 `zsp` 单字段提交方式。
-- 最新脚本会自动忽略 `{zsp}`、`{ZSP_CDK}` 这类 Loon 未替换的空参数占位符。
-- 广告任务会按接口返回的视频时长真实等待，完整运行可能耗时较长，插件超时已设置为 `3600` 秒。
-- 如账号失效、密钥错误、平台接口变更或网络异常，脚本会在 Loon 日志中输出失败原因。
-- 该插件是定时任务，不需要配置 MITM。
+- 任务结束后可发送运行摘要通知。
+- 支持查看和清除本地保存账号。
 
 插件 Raw 地址：
 https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/%E4%B8%AD%E8%A7%86%E9%A2%91.plugin
