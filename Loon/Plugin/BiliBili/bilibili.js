@@ -23,6 +23,11 @@ var API = {
   nav: "https://api.bilibili.com/x/web-interface/nav",
   dailyReward: "https://api.bilibili.com/x/member/web/exp/reward",
   coinTodayExp: "https://api.bilibili.com/x/web-interface/coin/today/exp",
+  ranking: "https://api.bilibili.com/x/web-interface/ranking/v2?rid=0&type=all",
+  videoDetail: "https://api.bilibili.com/x/web-interface/view",
+  videoHeartbeat: "https://api.bilibili.com/x/click-interface/web/heartbeat",
+  shareVideo: "https://api.bilibili.com/x/web-interface/share/add",
+  addCoin: "https://api.bilibili.com/x/web-interface/coin/add",
   liveSign: "https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/DoSign",
   liveWalletStatus: "https://api.live.bilibili.com/xlive/revenue/v1/wallet/getStatus",
   silver2coin: "https://api.live.bilibili.com/xlive/revenue/v1/wallet/silver2coin",
@@ -32,6 +37,7 @@ var API = {
   vipBigPointSign: "https://api.bilibili.com/pgc/activity/score/task/sign2"
 };
 
+var RUN_CACHE = {};
 var OPTIONS = parseArgument(typeof $argument === "string" ? $argument : "");
 
 function read(key, fallback) {
@@ -128,6 +134,12 @@ function postJson(url, data, extraHeaders) {
   extraHeaders = extraHeaders || {};
   extraHeaders["Content-Type"] = "application/json";
   return request("POST", { url: url, headers: headers(extraHeaders), body: JSON.stringify(data || {}) });
+}
+
+function randomInt(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function notify(title, subtitle, message, force) {
@@ -240,6 +252,127 @@ async function dailyReward(results) {
   else results.push(shortResult("投币经验", coinExp.data));
 }
 
+async function getVideoForRun() {
+  if (RUN_CACHE.video) return RUN_CACHE.video;
+
+  var rank = await get(API.ranking, { Referer: "https://www.bilibili.com/", Origin: "https://www.bilibili.com" });
+  var data = rank.data && rank.data.data;
+  var list = data && (data.list || data);
+  if (!list || !list.length) throw new Error(shortResult("选择视频", rank.data));
+
+  var item = list[randomInt(0, Math.min(list.length, 10) - 1)] || list[0];
+  var video = {
+    aid: item.aid || item.av,
+    bvid: item.bvid || item.bv_id || "",
+    title: item.title || "公开视频",
+    cid: item.cid || "",
+    duration: Number(item.duration || 0)
+  };
+  if (!video.aid) throw new Error("选择视频: 缺少 aid");
+
+  var detail = await get(API.videoDetail + "?aid=" + encodeURIComponent(video.aid), {
+    Referer: "https://www.bilibili.com/",
+    Origin: "https://www.bilibili.com"
+  });
+  if (detail.data && detail.data.code === 0 && detail.data.data) {
+    var detailData = detail.data.data;
+    video.bvid = detailData.bvid || video.bvid;
+    video.title = detailData.title || video.title;
+    video.duration = Number(detailData.duration || video.duration || 0);
+    if (detailData.pages && detailData.pages.length) video.cid = detailData.pages[0].cid || video.cid;
+  }
+
+  RUN_CACHE.video = video;
+  return video;
+}
+
+async function videoWatch(results) {
+  var csrf = read(STORE.csrf);
+  var mid = read(STORE.uid) || getCookiePart(read(STORE.cookie), "DedeUserID");
+  if (!csrf) {
+    results.push("观看视频: 缺少 csrf");
+    return;
+  }
+  if (!mid) {
+    results.push("观看视频: 缺少 UID");
+    return;
+  }
+  var video = await getVideoForRun();
+  var played = randomInt(45, 90);
+  if (video.duration > 0) played = Math.min(played, Math.max(1, video.duration - 1));
+  var now = Math.floor(Date.now() / 1000);
+  var referer = video.bvid ? "https://www.bilibili.com/video/" + video.bvid : "https://www.bilibili.com/video/av" + video.aid;
+  var res = await postForm(
+    API.videoHeartbeat + "?aid=" + encodeURIComponent(video.aid) + "&played_time=" + encodeURIComponent(played),
+    {
+      aid: video.aid,
+      bvid: video.bvid,
+      cid: video.cid,
+      mid: mid,
+      csrf: csrf,
+      played_time: played,
+      real_played_time: played,
+      realtime: played,
+      start_ts: now - played,
+      type: 3,
+      dt: 2,
+      play_type: 3
+    },
+    { Referer: referer, Origin: "https://www.bilibili.com" }
+  );
+  results.push(shortResult("观看视频", res.data));
+}
+
+async function videoShare(results) {
+  var csrf = read(STORE.csrf);
+  if (!csrf) {
+    results.push("分享视频: 缺少 csrf");
+    return;
+  }
+  var video = await getVideoForRun();
+  var referer = video.bvid ? "https://www.bilibili.com/video/" + video.bvid : "https://www.bilibili.com/video/av" + video.aid;
+  var res = await postForm(
+    API.shareVideo,
+    {
+      aid: video.aid,
+      csrf: csrf,
+      eab_x: 1,
+      ramval: randomInt(3, 20),
+      source: "web_normal",
+      ga: 1
+    },
+    { Referer: referer, Origin: "https://www.bilibili.com" }
+  );
+  results.push(shortResult("分享视频", res.data));
+}
+
+async function donateCoin(results) {
+  var csrf = read(STORE.csrf);
+  if (!csrf) {
+    results.push("投币: 缺少 csrf");
+    return;
+  }
+  var video = await getVideoForRun();
+  var multiply = Math.max(1, Math.min(2, readInt(OPTIONS.coinCount, 1)));
+  var referer = video.bvid ? "https://www.bilibili.com/video/" + video.bvid : "https://www.bilibili.com/video/av" + video.aid;
+  var res = await postForm(
+    API.addCoin,
+    {
+      aid: video.aid,
+      multiply: multiply,
+      select_like: boolOpt("coinSelectLike", true) ? 1 : 0,
+      cross_domain: "true",
+      csrf: csrf,
+      eab_x: 2,
+      ramval: 3,
+      source: "web_normal",
+      ga: 1
+    },
+    { Referer: referer, Origin: "https://www.bilibili.com" }
+  );
+  results.push(shortResult("投币", res.data));
+}
+
 async function liveSign(results) {
   var res = await get(API.liveSign, { Referer: "https://link.bilibili.com/", Origin: "https://link.bilibili.com" });
   results.push(shortResult("直播签到", res.data));
@@ -326,6 +459,9 @@ async function runTasks(manual) {
   var results = [];
   var tasks = [loginCheck];
   if (boolOpt("taskDailyReward", true)) tasks.push(dailyReward);
+  if (boolOpt("taskVideoWatch", true)) tasks.push(videoWatch);
+  if (boolOpt("taskVideoShare", true)) tasks.push(videoShare);
+  if (boolOpt("taskDonateCoin", false)) tasks.push(donateCoin);
   if (boolOpt("taskLiveSign", true)) tasks.push(liveSign);
   if (boolOpt("taskMangaSign", true)) tasks.push(mangaSign);
   if (boolOpt("taskMangaReward", false)) tasks.push(mangaVipReward);
@@ -341,7 +477,7 @@ async function runTasks(manual) {
     }
   }
 
-  var hasFailure = results.join("\n").indexOf(": 0 ") < 0 || /失败|缺少|未配置|NA/.test(results.join("\n"));
+  var hasFailure = /: (?!0(?:\s|$))[-\dNA]+|失败|缺少|未配置|非法|下线|不能|Error/i.test(results.join("\n"));
   var summary = results.join("\n");
   write(STORE.lastRun, new Date().toISOString());
   if (!manual) write(STORE.lastRunDate, todayString());
