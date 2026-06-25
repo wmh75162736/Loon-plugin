@@ -6,7 +6,7 @@
 
 ## BiliBili Daily
 
-说明：用于 B 站 Cookie 本地捕获、每日签到、直播签到、漫画签到、大会员福利与大积分签到任务。Cookie 只保存在 Loon 本地 `$persistentStore`，不会上传到 GitHub。
+说明：用于 B 站网页端 Cookie 捕获/手动 Cookie 保存、每日签到、直播签到、漫画签到、大会员福利与大积分签到任务。Cookie 只保存在 Loon 本地 `$persistentStore`，不会上传到 GitHub。
 
 插件 Raw 地址：
 https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/BiliBili/bilibili.plugin

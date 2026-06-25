@@ -1,15 +1,35 @@
 #!name=BiliBili Daily
-#!desc=Bilibili Cookie capture and daily task runner for Loon. Based on the public API layout used by RayWangQvQ/BiliBiliToolPro.
+#!desc=网页端 Cookie 获取 + B 站每日任务，支持手动保存/清除 Cookie、任务开关和开始时间设置。
 #!author=wmh75162736
 #!homepage=https://github.com/wmh75162736/Loon-plugin/tree/main/Loon/Plugin/BiliBili
 #!icon=https://www.bilibili.com/favicon.ico
+#!loon_version=3.4.0(962)
+
+[Argument]
+webCookieCapture = switch,true,tag=网页获取 Cookie,desc=开启后用 Safari 打开并登录 www.bilibili.com，刷新首页或个人页即可捕获 Cookie。无需拦截 B 站 App。
+dailyTasks = switch,true,tag=每日自动任务,desc=开启后脚本每 5 分钟唤醒一次，到设置的开始时间后每天只执行一次。
+startHour = input,"9",tag=开始小时,desc=0-23，例如 9 表示上午 9 点。
+startMinute = input,"15",tag=开始分钟,desc=0-59，例如 15 表示 09:15 后执行。
+notifyMode = select,"always","failure","never",tag=通知模式,desc=always=始终通知，failure=仅失败/缺 Cookie 通知，never=不通知。
+manualCookie = input,"",tag=手动 Cookie,desc=无法网页捕获时，在电脑浏览器登录 b站，复制请求 Cookie 到这里，再打开“显示 Cookie 工具”并运行保存。
+manualUserAgent = input,"",tag=手动 User-Agent,desc=可选。留空会使用默认 iPhone UA。
+cookieTools = switch,false,tag=显示 Cookie 工具,desc=开启后可运行“保存Cookie / 查看状态 / 清除Cookie”脚本资源。
+manualRun = switch,false,tag=显示立即运行,desc=开启后可手动运行一次全部已开启任务。
+taskDailyReward = switch,true,tag=每日经验状态,desc=查询每日经验与投币经验状态。
+taskLiveSign = switch,true,tag=直播签到,desc=执行直播签到。
+taskMangaSign = switch,true,tag=漫画签到,desc=执行漫画签到。
+taskMangaReward = switch,false,tag=漫画会员福利,desc=领取漫画会员福利；非会员或已领取会返回失败提示。
+taskVipPrivilege = switch,false,tag=大会员每月福利,desc=领取大会员 B 币券/权益；仅符合条件账号有效。
+taskVipPoint = switch,true,tag=大会员大积分签到,desc=执行大会员大积分签到。
+taskSilver2Coin = switch,false,tag=银瓜子兑换硬币,desc=按直播钱包状态尝试银瓜子兑换硬币。
 
 [Script]
-# Open the Bilibili app once after installing this plugin. Loon will capture Cookie and User-Agent locally.
-http-request ^https?:\/\/(api|app|www)\.bilibili\.com\/(x\/web-interface\/nav|x\/v2\/account\/myinfo|x\/resource\/show\/tab|x\/v2\/feed\/index) script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/BiliBili/bilibili.js, argument=action=capture, requires-body=false, timeout=20, tag=BiliBili Cookie Capture
-
-# Daily task. Loon cron fields: minute hour day month weekday.
-cron "15 9 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/BiliBili/bilibili.js, argument=action=daily, timeout=180, tag=BiliBili Daily Tasks
+http-request ^https?:\/\/(?:www|api)\.bilibili\.com\/(?:$|x\/web-interface\/nav|x\/web-interface\/.*|account\/.*|video\/.*) script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/BiliBili/bilibili.js,argument=action=capture,requires-body=false,timeout=20,tag=BiliBili_网页获取Cookie,enable={webCookieCapture}
+cron "*/5 * * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/BiliBili/bilibili.js,timeout=180,tag=BiliBili_每日自动任务,argument=action=auto,notifyMode={notifyMode},startHour={startHour},startMinute={startMinute},taskDailyReward={taskDailyReward},taskLiveSign={taskLiveSign},taskMangaSign={taskMangaSign},taskMangaReward={taskMangaReward},taskVipPrivilege={taskVipPrivilege},taskVipPoint={taskVipPoint},taskSilver2Coin={taskSilver2Coin},enable={dailyTasks}
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/BiliBili/bilibili.js,timeout=180,tag=BiliBili_立即运行,argument=action=manual,notifyMode={notifyMode},taskDailyReward={taskDailyReward},taskLiveSign={taskLiveSign},taskMangaSign={taskMangaSign},taskMangaReward={taskMangaReward},taskVipPrivilege={taskVipPrivilege},taskVipPoint={taskVipPoint},taskSilver2Coin={taskSilver2Coin},enable={manualRun}
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/BiliBili/bilibili.js,timeout=30,tag=BiliBili_保存Cookie,argument=action=saveCookie,cookie={manualCookie},userAgent={manualUserAgent},enable={cookieTools}
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/BiliBili/bilibili.js,timeout=30,tag=BiliBili_查看状态,argument=action=status,enable={cookieTools}
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/BiliBili/bilibili.js,timeout=30,tag=BiliBili_清除Cookie,argument=action=clearCookie,enable={cookieTools}
 
 [MITM]
-hostname = api.bilibili.com, app.bilibili.com, www.bilibili.com, manga.bilibili.com, api.live.bilibili.com
+hostname = www.bilibili.com, api.bilibili.com
