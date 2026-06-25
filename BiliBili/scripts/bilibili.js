@@ -1,3 +1,4 @@
+/* upstream: RayWangQvQ/BiliBiliToolPro@d552d69 */
 /*
  * BiliBili Loon automation template.
  *

@@ -1,0 +1,101 @@
+{
+  "IUserInfoApi.cs": {
+    "sha256": "228834ae8207dc2f5f501cc3c74a3aa4973fbf37e3dc69e91a22ab1dd1222702",
+    "hosts": [
+      "api.bilibili.com"
+    ],
+    "routes": [
+      "/x/web-interface/nav"
+    ]
+  },
+  "IDailyTaskApi.cs": {
+    "sha256": "2cb942ec69714c819ad2e44cd6aa64c9a08cc152a58df37f113731b4353dbdf4",
+    "hosts": [
+      "api.bilibili.com"
+    ],
+    "routes": [
+      "/x/member/web/exp/reward",
+      "/x/web-interface/coin/today/exp",
+      "/x/vip/privilege/receive?type={type}&csrf={csrf}"
+    ]
+  },
+  "ILiveApi.cs": {
+    "sha256": "9e21e33434c67329578cbf9914651289ccf4d4f799ca65626d0b26d7717ae65a",
+    "hosts": [
+      "api.live.bilibili.com"
+    ],
+    "routes": [
+      "/xlive/web-ucenter/v1/sign/DoSign",
+      "/pay/v1/Exchange/silver2coin",
+      "/pay/v1/Exchange/getStatus",
+      "/xlive/revenue/v1/wallet/silver2coin",
+      "/xlive/revenue/v1/wallet/getStatus",
+      "/xlive/web-interface/v1/index/getWebAreaList?source_id=2",
+      "/xlive/web-interface/v1/second/getList",
+      "/xlive/lottery-interface/v1/Anchor/Check?roomid={roomId}",
+      "/xlive/lottery-interface/v1/Anchor/Join",
+      "/xlive/web-ucenter/user/MedalWall?target_id={userId}",
+      "/xlive/app-ucenter/v1/fansMedal/wear",
+      "/msg/send",
+      "/room/v1/Room/get_info?room_id={roomId}&from=room",
+      "/news/v1/notice/recom?product=live",
+      "/xlive/app-ucenter/v1/like_info_v3/like/likeReportV3"
+    ]
+  },
+  "IMangaApi.cs": {
+    "sha256": "cedd4fdaa9e66bd5bbca3d2bedc9fd5d2a19105559de526139e967fbaf795905",
+    "hosts": [
+      "manga.bilibili.com"
+    ],
+    "routes": [
+      "/twirp/activity.v1.Activity/ClockIn?platform={platform}",
+      "/twirp/user.v1.User/GetVipReward?reason_id={reason_id}"
+    ]
+  },
+  "IMallApi.cs": {
+    "sha256": "0fd4ff2fbc18e0e38863aa964f25cd1975162f6018d45207a34f72672213d869",
+    "hosts": [
+      "api.bilibili.com"
+    ],
+    "routes": [
+      "/pgc/activity/score/task/sign2",
+      "/x/vip_point/task/combine"
+    ]
+  },
+  "IVipBigPointApi.cs": {
+    "sha256": "dc0d5fa37221ee9544c4a3f29f7a7657248e7f79aba4b1b65dd1edc83d11dafe",
+    "hosts": [
+      "api.bilibili.com"
+    ],
+    "routes": [
+      "/x/vip/vip_center/sign_in/three_days_sign",
+      "/x/vip_point/task/combine",
+      "/pgc/activity/score/task/sign",
+      "/pgc/activity/score/task/receive",
+      "/pgc/activity/score/task/receive/v2",
+      "/pgc/activity/score/task/complete",
+      "/pgc/activity/score/task/complete/v2",
+      "/pgc/activity/deliver/task/complete",
+      "/x/vip/privilege/my",
+      "/x/vip/experience/add"
+    ]
+  },
+  "IVideoApi.cs": {
+    "sha256": "e3d45d02e91909404c6928b03b26ca1b96bdd17763ce320d8283fcb83c20272c",
+    "hosts": [
+      "api.bilibili.com"
+    ],
+    "routes": [
+      "/x/web-interface/share/add",
+      "/x/click-interface/web/heartbeat?aid={aid}&played_time={playedTime}",
+      "/x/web-interface/coin/add",
+      "/x/web-interface/archive/coins",
+      "/x/space/wbi/arc/search?mid={upId}&ps={pageSize}&tid=0&pn={pageNumber}&keyword={keyword}&order=pubdate&platform=web&web_location=1550101&order_avoided=true&w_rid=5df06b1c48e2be86a96e9d0f99bf06f4&wts=1684854929",
+      "/x/space/wbi/arc/search",
+      "/pgc/view/web/season?season_id={ssid}",
+      "/x/web-interface/view?aid={aid}",
+      "/x/web-interface/ranking/region?rid={rid}&day={day}",
+      "/x/web-interface/ranking/v2?rid=0&type=all"
+    ]
+  }
+}
