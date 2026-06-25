@@ -1,6 +1,12 @@
 name: Sync BiliBiliToolPro API Layout
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "BiliBili/**"
+      - ".github/workflows/bilibili-sync.yml"
   workflow_dispatch:
   schedule:
     # UTC 20:30 = Asia/Shanghai 04:30
