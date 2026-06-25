@@ -26,7 +26,7 @@ https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubuserconten
 登录方式：
 1. 先在中视频平台完成注册、本人认证，并获取商户密钥。
 2. 单账号推荐在插件设置里分别填写 `secretId` 和 `secretKey`。
-3. 多账号使用 `多账号配置`，格式为 `备注#secretId#secretKey`，可追加 `#deviceId`。
+3. 多账号使用 `多账号配置`，格式为 `备注#secretId#secretKey`，可追加 `#deviceId`。脚本也兼容 `备注＃secretId＃secretKey` 和 `备注%23secretId%23secretKey`。
 4. 多账号在 Loon 输入框里建议用 `||` 分隔，例如：`账号1#secretId#secretKey||账号2#secretId#secretKey#deviceId`。
 5. 填写或修改账号后，必须手动运行一次 `中视频_保存账号`。
 6. 再运行 `中视频_查看状态`，确认账号数量不是 0 后执行每日任务或立即运行。

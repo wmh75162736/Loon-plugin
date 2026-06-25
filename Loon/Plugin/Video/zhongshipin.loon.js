@@ -100,7 +100,10 @@ function parseArguments(raw) {
 }
 
 function cleanArgValue(value) {
-  const str = String(value || "").trim();
+  let str = String(value || "").trim();
+  if ((str.startsWith("\"") && str.endsWith("\"")) || (str.startsWith("'") && str.endsWith("'"))) {
+    str = str.slice(1, -1).trim();
+  }
   if (/^\{[^{}]+\}$/.test(str)) return "";
   return str;
 }
@@ -125,27 +128,14 @@ function loadRuntimeConfig() {
   runtimeConfig.deviceId =
     cleanArgValue(args.deviceId || readStore("ZSP_DEVICE_ID") || "");
 
-  runtimeConfig.zsp =
-    cleanArgValue(
-      args.ZSP ||
-      args.zsp ||
-      args.AD_WATCH_ACCOUNTS ||
-      readStore(ACCOUNT_STORE_KEY) ||
-      readStore("ZSP") ||
-      readStore("zsp") ||
-      readStore("AD_WATCH_ACCOUNTS") ||
-      ""
-    );
-
-  if (runtimeConfig.action !== "save") {
-    runtimeConfig.zsp =
-      readStore(ACCOUNT_STORE_KEY) ||
-      readStore("ZSP") ||
-      readStore("zsp") ||
-      readStore("AD_WATCH_ACCOUNTS") ||
-      runtimeConfig.zsp ||
-      "";
-  }
+  const inputZsp = cleanArgValue(args.ZSP || args.zsp || args.AD_WATCH_ACCOUNTS || "");
+  const storedZsp =
+    readStore(ACCOUNT_STORE_KEY) ||
+    readStore("ZSP") ||
+    readStore("zsp") ||
+    readStore("AD_WATCH_ACCOUNTS") ||
+    "";
+  runtimeConfig.zsp = runtimeConfig.action === "save" ? inputZsp : (inputZsp || storedZsp);
 
   runtimeConfig.zsp = cleanArgValue(runtimeConfig.zsp);
 
@@ -182,7 +172,13 @@ function loadRuntimeConfig() {
 }
 
 function buildAccountConfigFromArgs() {
-  const zsp = normalizeAccountConfig(runtimeConfig.zsp);
+  const zsp = findAccountConfigCandidate(
+    runtimeConfig.zsp,
+    runtimeConfig.accountRemark,
+    runtimeConfig.secretId,
+    runtimeConfig.secretKey,
+    runtimeConfig.deviceId
+  );
   if (zsp) return zsp;
   if (!runtimeConfig.secretId || !runtimeConfig.secretKey) return "";
 
@@ -193,6 +189,23 @@ function buildAccountConfigFromArgs() {
   ];
   if (runtimeConfig.deviceId) parts.push(runtimeConfig.deviceId);
   return parts.join("#");
+}
+
+function findAccountConfigCandidate() {
+  for (const value of arguments) {
+    const config = normalizeAccountConfig(value);
+    if (isAccountConfig(config)) return config;
+  }
+  return "";
+}
+
+function isAccountConfig(config) {
+  const lines = normalizeAccountConfig(config).split("\n").filter((line) => line.trim());
+  if (lines.length === 0) return false;
+  return lines.every((line) => {
+    const parts = line.split("#").map((part) => cleanArgValue(part));
+    return parts.length >= 3 && parts[1] && parts[2];
+  });
 }
 
 function parseAccountsFromConfig(config, options) {
@@ -206,8 +219,8 @@ function parseAccountsFromConfig(config, options) {
   const accountStrs = envValue.split("\n").filter((str) => str.trim());
 
   for (const str of accountStrs) {
-    const parts = str.split("#");
-    if (parts.length >= 3) {
+    const parts = str.split("#").map((part) => cleanArgValue(part));
+    if (parts.length >= 3 && parts[1] && parts[2]) {
       const remark = parts[0] || "未命名账号";
       const secretId = parts[1];
       const secretKey = parts[2];
@@ -248,7 +261,7 @@ function saveAccountConfig() {
     const message = [
       "账号保存失败：未解析到有效账号。",
       "请填写 secretId/secretKey，或在多账号配置里填写：备注#secretId#secretKey。",
-      raw ? `当前参数: ${raw}` : ""
+      raw ? `当前参数长度: ${raw.length}` : ""
     ].filter(Boolean).join("\n");
     console.log(message);
     notify("保存失败", message);
@@ -490,12 +503,27 @@ function loadAccounts() {
 }
 
 function normalizeAccountConfig(value) {
-  return String(value || "")
+  return safeDecodeConfig(cleanArgValue(value))
+    .replace(/＃/g, "#")
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
     .replace(/\\n/g, "\n")
     .replace(/\|\|/g, "\n")
     .trim();
+}
+
+function safeDecodeConfig(value) {
+  let str = String(value || "");
+  for (let i = 0; i < 2; i++) {
+    try {
+      const decoded = decodeURIComponent(str);
+      if (decoded === str) break;
+      str = decoded;
+    } catch (_) {
+      break;
+    }
+  }
+  return str;
 }
 
 async function processAccount(account) {

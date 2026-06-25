@@ -42,11 +42,13 @@ secretId：你的 secretId
 secretKey：你的 secretKey
 ```
 
-多账号使用“多账号配置”字段：
+多账号使用“多账号配置”字段。脚本支持半角 `#`、全角 `＃` 和 `%23` 三种分隔方式：
 
 ```text
 账号1#secretId#secretKey
 账号2#secretId#secretKey#固定deviceId
+账号3＃secretId＃secretKey
+账号4%23secretId%23secretKey
 ```
 
 在 Loon 输入框里多账号更推荐用 `||` 分隔：
@@ -106,7 +108,7 @@ secretKey：你的 secretKey
 2. 确认填写账号后运行过 `中视频_保存账号`。
 3. 运行 `中视频_查看状态`，确认账号数量不是 0。
 4. 单账号不要把 `secretId#secretKey` 填到 `secretId` 或 `secretKey` 单独字段里。
-5. 多账号必须带备注，格式是 `备注#secretId#secretKey`。
+5. 多账号必须带备注，格式是 `备注#secretId#secretKey`。如果半角 `#` 在 Loon 里保存异常，可改用 `备注＃secretId＃secretKey` 或 `备注%23secretId%23secretKey`。
 6. 仍然异常时，运行 `中视频_清除账号`，重新填写并保存。
 
 这版脚本已经避免每日 cron 直接携带 `#secretId#secretKey`，因为 Loon 的插件参数层在部分情况下会把未替换占位符或 `#` 分隔内容传坏。账号先保存到 `$persistentStore` 后，每日任务读取本地存储执行。
