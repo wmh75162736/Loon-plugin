@@ -690,17 +690,24 @@ async function mangaVipReward(results) {
   results.push(shortResult("漫画福利", res.data));
 }
 
+function vipPrivilegeName(type) {
+  if (Number(type) === 1) return "年度大会员B币券";
+  if (Number(type) === 2) return "大会员权益";
+  return "大会员福利";
+}
+
 async function vipPrivilege(results) {
+  section(results, "领取大会员B币券/权益");
   var csrf = read(STORE.csrf);
   if (!csrf) {
-    results.push("大会员福利: 缺少 csrf");
+    results.push("大会员B币券/权益: 缺少 csrf");
     return;
   }
   for (var i = 0; i < 2; i++) {
     var type = i + 1;
     var url = API.vipPrivilege + "?type=" + type + "&csrf=" + encodeURIComponent(csrf);
     var res = await postForm(url, {}, { Referer: "https://account.bilibili.com/" });
-    results.push(shortResult("大会员福利 type=" + type, res.data));
+    results.push(shortResult(vipPrivilegeName(type), res.data));
   }
 }
 
