@@ -114,6 +114,7 @@ function cleanArgValue(value) {
   if ((str.startsWith("\"") && str.endsWith("\"")) || (str.startsWith("'") && str.endsWith("'"))) {
     str = str.slice(1, -1).trim();
   }
+  str = str.replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
   if (/^\{[^{}]+\}$/.test(str)) return "";
   return str;
 }
@@ -269,6 +270,7 @@ function parseAccountsFromConfig(config, options) {
 
       accounts.push({ remark, secretId, secretKey, deviceId });
       console.log(`加载账号: ${remark}`);
+      console.log(`账号字段长度: secretId=${secretId.length}, secretKey=${secretKey.length}, deviceId=${deviceId.length}`);
     } else {
       console.log(`忽略格式错误的账号配置: ${str}`);
     }
@@ -314,7 +316,7 @@ function showAccountStatus() {
   const cdk = readStore(CDK_STORE_KEY) || readStore("ZSP_CDK") || "";
   const message = [
     `账号配置: ${accounts.length > 0 ? `已保存 ${accounts.length} 个` : "未保存"}`,
-    accounts.length > 0 ? accounts.map((account) => `- ${account.remark}`).join("\n") : "",
+    accounts.length > 0 ? accounts.map((account) => `- ${account.remark} / secretId长度:${account.secretId.length} / secretKey长度:${account.secretKey.length} / deviceId长度:${account.deviceId.length}`).join("\n") : "",
     `CDK: ${cdk ? "已保存/已配置" : "未配置"}`,
     `设备缓存: ${Object.keys(deviceCache || {}).length} 条`
   ].filter(Boolean).join("\n");
@@ -667,6 +669,7 @@ async function login(account) {
   };
 
   try {
+    console.log(`登录字段长度: secretId=${account.secretId.length}, secretKey=${account.secretKey.length}, deviceId=${account.deviceId.length}`);
     const response = await httpRequest({
       url,
       method: "POST",
@@ -684,7 +687,7 @@ async function login(account) {
       return data.data.token;
     }
 
-    console.log(`登录失败: ${data.message || "未知错误"}`);
+    console.log(`登录失败: code=${data.code}, message=${decodeUnicode(data.message || "未知错误")}`);
     return null;
   } catch (error) {
     console.log(`登录请求失败: ${error.message}`);
