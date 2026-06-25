@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "BiliBili/**"
+      - "Loon/Plugin/BiliBili/**"
       - ".github/workflows/bilibili-sync.yml"
   workflow_dispatch:
   schedule:
@@ -18,8 +18,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: bilibili-sync-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   sync:
@@ -70,32 +70,32 @@ jobs:
                   "routes": routes,
               }
 
-          out = pathlib.Path("BiliBili/upstream-api-manifest.json")
+          out = pathlib.Path("Loon/Plugin/BiliBili/upstream-api-manifest.json")
           new_text = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
           old_text = out.read_text(encoding="utf-8") if out.exists() else ""
           out.write_text(new_text, encoding="utf-8")
           print("changed=" + str(old_text != new_text).lower())
           PY
 
-      - name: Refresh script metadata when upstream changed
+      - name: Refresh script metadata
         shell: bash
         run: |
           set -euo pipefail
           UPSTREAM_SHA="$(git -C upstream rev-parse --short HEAD)"
           {
             echo "/* upstream: RayWangQvQ/BiliBiliToolPro@${UPSTREAM_SHA} */"
-            sed '/^\/\* upstream: RayWangQvQ\/BiliBiliToolPro@/d' BiliBili/scripts/bilibili.js
+            sed '/^\/\* upstream: RayWangQvQ\/BiliBiliToolPro@/d' Loon/Plugin/BiliBili/bilibili.js
           } > /tmp/bilibili.js
-          mv /tmp/bilibili.js BiliBili/scripts/bilibili.js
+          mv /tmp/bilibili.js Loon/Plugin/BiliBili/bilibili.js
 
       - name: Build Pages artifact
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp BiliBili/bilibili.plugin dist/bilibili.plugin
-          cp BiliBili/scripts/bilibili.js dist/bilibili.js
-          cp BiliBili/upstream-api-manifest.json dist/upstream-api-manifest.json
+          cp Loon/Plugin/BiliBili/bilibili.plugin dist/bilibili.plugin
+          cp Loon/Plugin/BiliBili/bilibili.js dist/bilibili.js
+          cp Loon/Plugin/BiliBili/upstream-api-manifest.json dist/upstream-api-manifest.json
           cat > dist/index.html <<'HTML'
           <!doctype html>
           <meta charset="utf-8">
@@ -109,10 +109,19 @@ jobs:
           HTML
 
       - name: Commit sync result
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore: sync upstream API manifest"
-          file_pattern: "BiliBili/scripts/bilibili.js BiliBili/upstream-api-manifest.json"
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Loon/Plugin/BiliBili/bilibili.js Loon/Plugin/BiliBili/upstream-api-manifest.json
+          if git diff --cached --quiet; then
+            echo "No upstream API changes."
+            exit 0
+          fi
+          git commit -m "chore: sync BiliBili upstream API manifest"
+          git pull --rebase origin "${GITHUB_REF_NAME:-main}"
+          git push origin "HEAD:${GITHUB_REF_NAME:-main}"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
