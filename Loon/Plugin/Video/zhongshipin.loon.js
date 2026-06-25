@@ -37,6 +37,7 @@ let runtimeConfig = {
   cdk: "",
   maxAds: 50,
   notify: true,
+  dailyTasks: true,
   delayMin: 3000,
   delayMax: 6000
 };
@@ -173,6 +174,8 @@ function loadRuntimeConfig() {
   runtimeConfig.delayMax = parsePositiveInt(args.delayMax || readStore("ZSP_DELAY_MAX"), 6000);
   const notifyValue = String(cleanArgValue(args.notify || readFirstStore(["notify", "ZSP_NOTIFY"]) || "1")).toLowerCase();
   runtimeConfig.notify = !["0", "false", "off", "no"].includes(notifyValue);
+  const dailyTasksValue = String(cleanArgValue(args.dailyTasks || readFirstStore(["dailyTasks"]) || "true")).toLowerCase();
+  runtimeConfig.dailyTasks = !["0", "false", "off", "no"].includes(dailyTasksValue);
 
   if (runtimeConfig.delayMax < runtimeConfig.delayMin) {
     runtimeConfig.delayMax = runtimeConfig.delayMin;
@@ -331,6 +334,10 @@ function clearAccountConfig() {
 
 async function runEntry() {
   loadRuntimeConfig();
+  if (runtimeConfig.action === "auto" && !runtimeConfig.dailyTasks) {
+    console.log("每日自动任务已在插件配置中关闭，跳过执行。");
+    return;
+  }
   if (runtimeConfig.action === "save") {
     saveAccountConfig();
     return;

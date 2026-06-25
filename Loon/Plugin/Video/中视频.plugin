@@ -3,23 +3,19 @@
 #!author=wmh75162736
 #!homepage=https://github.com/wmh75162736/Loon-plugin/tree/main/Loon/Plugin/Video
 #!loon_version=3.4.0(962)
-
-[Argument]
-dailyTasks = switch,true,tag=每日自动任务,desc=开启后每天 09:00 自动运行一次。
-manualRun = switch,false,tag=显示立即运行,desc=开启后可手动运行一次任务。
-accountTools = switch,true,tag=显示账号工具,desc=开启后显示保存账号、查看状态、清除账号脚本。
-accountRemark = input,"默认账号",tag=账号备注,desc=单账号备注，用于日志和通知。
-secretId = input,"",tag=secretId,desc=商户密钥中的 secretId。单账号推荐填写这里。
-secretKey = input,"",tag=secretKey,desc=商户密钥中的 secretKey。单账号推荐填写这里。
-deviceId = input,"",tag=固定设备码,desc=可选。留空时首次保存账号自动生成并本地保存。
-zsp = input,"",tag=多账号配置,desc=高级用法。支持 备注#secretId#secretKey、备注＃secretId＃secretKey 或 备注%23secretId%23secretKey；多账号建议用 || 分隔。
-ZSP_CDK = input,"",tag=CDK兑换码,desc=可选。留空则跳过 CDK 兑换。
-maxAds = input,"50",tag=广告次数,desc=默认 50。任务耗时较长，插件超时已设为 3600 秒。
-notify = switch,true,tag=运行通知,desc=任务结束后发送运行摘要通知。
+#!input = accountRemark
+#!input = secretId
+#!input = secretKey
+#!input = deviceId
+#!input = zsp
+#!input = ZSP_CDK
+#!input = maxAds
+#!select = notify,true,false
+#!select = dailyTasks,true,false
 
 [Script]
-cron "0 0 9 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=3600,tag=中视频_每日任务,argument="action=auto,maxAds={maxAds},notify={notify},ZSP_CDK={ZSP_CDK}",enable={dailyTasks}
-cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=3600,tag=中视频_立即运行,argument="action=manual,maxAds={maxAds},notify={notify},ZSP_CDK={ZSP_CDK}",enable={manualRun}
-cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=60,tag=中视频_保存账号,argument="action=save,accountRemark={accountRemark},secretId={secretId},secretKey={secretKey},deviceId={deviceId},zsp={zsp},ZSP_CDK={ZSP_CDK}",enable={accountTools}
-cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=30,tag=中视频_查看状态,argument="action=status",enable={accountTools}
-cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=30,tag=中视频_清除账号,argument="action=clear",enable={accountTools}
+cron "0 0 9 * * *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=3600,tag=中视频_每日任务,argument="action=auto",enable=true
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=3600,tag=中视频_立即运行,argument="action=manual",enable=true
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=60,tag=中视频_保存账号,argument="action=save",enable=true
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=30,tag=中视频_查看状态,argument="action=status",enable=true
+cron "0 0 1 1 *" script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video/zhongshipin.loon.js,timeout=30,tag=中视频_清除账号,argument="action=clear",enable=true

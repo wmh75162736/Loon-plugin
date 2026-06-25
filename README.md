@@ -23,12 +23,12 @@ https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubuserconten
 
 本版已改为“先保存账号、再运行任务”的 Loon 专用流程。插件设置里的 `secretId/secretKey` 或多账号 `zsp` 需要先通过 `中视频_保存账号` 写入 Loon 本地 `$persistentStore`，每日任务和立即运行任务只读取已保存账号，避免 Loon 参数层把 `#secretId#secretKey` 或空占位符传坏。
 
-兼容说明：按 Loon 官方文档，脚本 `argument` 应整体用双引号包裹，插件输入项也可通过 `$persistentStore.read(参数名)` 读取。当前版本已同时支持这两种读取路径。
+兼容说明：按 Loon 官方文档，插件输入项应使用 `#!input` / `#!select`，脚本通过 `$persistentStore.read(参数名)` 读取。当前版本已改为这种方式，`secretId` 和 `secretKey` 不再通过 `argument` 传递。
 
 登录方式：
 1. 先在中视频平台完成注册、本人认证，并获取商户密钥。
-2. 单账号推荐在插件设置里分别填写 `secretId` 和 `secretKey`。
-3. 多账号使用 `多账号配置`，格式为 `备注#secretId#secretKey`，可追加 `#deviceId`。脚本也兼容 `备注＃secretId＃secretKey` 和 `备注%23secretId%23secretKey`。
+2. 单账号推荐在插件设置里分别填写 `accountRemark`、`secretId` 和 `secretKey`。
+3. 多账号使用 `zsp`，格式为 `备注#secretId#secretKey`，可追加 `#deviceId`。脚本也兼容 `备注＃secretId＃secretKey` 和 `备注%23secretId%23secretKey`。
 4. 多账号在 Loon 输入框里建议用 `||` 分隔，例如：`账号1#secretId#secretKey||账号2#secretId#secretKey#deviceId`。
 5. 填写或修改账号后，必须手动运行一次 `中视频_保存账号`。
 6. 再运行 `中视频_查看状态`，确认账号数量不是 0 后执行每日任务或立即运行。

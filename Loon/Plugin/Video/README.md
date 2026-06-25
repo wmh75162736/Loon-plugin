@@ -34,15 +34,15 @@ https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/Video
 
 先在中视频平台完成注册和实名认证，然后在商户密钥页面取得 `secretId` 和 `secretKey`。
 
-单账号推荐填写插件设置里的两个独立字段：
+单账号推荐填写插件设置里的两个独立字段。当前版本使用 Loon 官方 `#!input` 配置项，设置页显示的是字段名：
 
 ```text
-账号备注：默认账号
+accountRemark：备注
 secretId：你的 secretId
 secretKey：你的 secretKey
 ```
 
-多账号使用“多账号配置”字段。脚本支持半角 `#`、全角 `＃` 和 `%23` 三种分隔方式：
+多账号使用 `zsp` 字段，填写多账号时请留空 `secretId` 和 `secretKey`。脚本支持半角 `#`、全角 `＃` 和 `%23` 三种分隔方式：
 
 ```text
 账号1#secretId#secretKey
@@ -62,12 +62,12 @@ secretKey：你的 secretKey
 ## 首次使用步骤
 
 1. 删除旧版“中视频”插件后重新导入，避免 Loon 使用旧缓存。
-2. 进入插件设置，填写 `secretId` 和 `secretKey`，单账号不需要填写“多账号配置”。
-3. 保持“显示账号工具”开启。
+2. 进入插件设置，单账号填写 `accountRemark`、`secretId`、`secretKey`。
+3. 多账号只填写 `zsp`，格式为 `备注#secretId#secretKey`，并留空 `secretId` 和 `secretKey`。
 4. 在脚本列表手动运行 `中视频_保存账号`。
 5. 再手动运行 `中视频_查看状态`，看到“已保存 1 个”或对应账号数量后再执行任务。
-6. 需要立即测试时，打开“显示立即运行”，手动运行 `中视频_立即运行`。
-7. 每日自动任务默认每天 09:00 运行。
+6. 需要立即测试时，手动运行 `中视频_立即运行`。
+7. 每日自动任务默认每天 09:00 运行；如需关闭，把 `dailyTasks` 设为 `false`。
 
 重要：每日任务不会直接读取插件设置里的 `secretId/secretKey`，它只读取“保存账号”写入的本地存储。修改账号后必须重新运行一次 `中视频_保存账号`。
 
@@ -75,11 +75,12 @@ secretKey：你的 secretKey
 
 Loon 官方文档中，脚本 `argument` 建议整体使用双引号，例如 `argument = "name=loon&version=2.1.0"`；插件输入项的值也可以在脚本里通过 `$persistentStore.read(参数名)` 读取。
 
-因此当前版本同时做了两层兼容：
+因此当前版本改为官方配置读取方式：
 
-- 插件里的 `argument` 已改为整段双引号格式。
+- 插件设置使用 `#!input` / `#!select`，不是 `[Argument]`。
+- `中视频_保存账号` 只传 `argument="action=save"`，不再传递密钥。
 - 脚本会直接读取插件设置键：`accountRemark`、`secretId`、`secretKey`、`deviceId`、`zsp`、`ZSP_CDK`、`maxAds`、`notify`。
-- 如果 Loon 没有把 `{zsp}` 替换进 `$argument`，保存账号仍会从 `$persistentStore.read("zsp")` 等插件设置键读取。
+- 账号保存成功后，会写入 `zsp.accounts.v1` 和 `ZSP`，每日任务只读这两个保存后的账号配置。
 
 ## 功能
 
@@ -98,17 +99,15 @@ Loon 官方文档中，脚本 `argument` 建议整体使用双引号，例如 `a
 
 | 参数 | 说明 |
 | --- | --- |
-| 每日自动任务 | 开启后每天 09:00 自动运行 |
-| 显示立即运行 | 开启后显示手动测试任务 |
-| 显示账号工具 | 开启后显示保存账号、查看状态、清除账号 |
-| 账号备注 | 单账号备注 |
+| dailyTasks | `true` 开启每日任务，`false` 跳过每日任务 |
+| accountRemark | 单账号备注 |
 | secretId | 商户密钥里的 secretId |
 | secretKey | 商户密钥里的 secretKey |
-| 固定设备码 | 可选，留空自动生成 |
-| 多账号配置 | 高级用法，填写后优先使用此项 |
-| CDK 兑换码 | 可选，留空跳过 CDK |
-| 广告次数 | 默认 50 |
-| 运行通知 | 是否发送运行摘要通知 |
+| deviceId | 可选，留空自动生成 |
+| zsp | 多账号配置；填写后请留空 secretId/secretKey |
+| ZSP_CDK | 可选，留空跳过 CDK |
+| maxAds | 默认 50 |
+| notify | `true` 开启通知，`false` 关闭通知 |
 
 ## 常见问题
 
