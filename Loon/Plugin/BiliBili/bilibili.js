@@ -196,6 +196,14 @@ function notify(title, subtitle, message, force) {
   $notification.post(title, subtitle || "", message || "");
 }
 
+function log(message) {
+  try {
+    message = String(message || "");
+    if (typeof console !== "undefined" && console.log) console.log(message);
+    else if (typeof $console !== "undefined" && $console.log) $console.log(message);
+  } catch (err) {}
+}
+
 function done(value) {
   if (typeof $done === "function") $done(value || {});
 }
@@ -204,6 +212,7 @@ function saveCredential(cookie, ua, source) {
   cookie = clean(cookie);
   ua = clean(ua) || DEFAULT_UA;
   if (!validCookie(cookie)) {
+    log("BiliBili Cookie 保存失败：Cookie 必须包含 SESSDATA 和 bili_jct。");
     notify("BiliBili Cookie", "保存失败", "Cookie 必须包含 SESSDATA 和 bili_jct。", true);
     return false;
   }
@@ -213,6 +222,7 @@ function saveCredential(cookie, ua, source) {
   write(STORE.userAgent, ua);
   write(STORE.csrf, csrf);
   write(STORE.uid, uid);
+  log("BiliBili Cookie 保存成功，来源: " + source + "，UID: " + (uid || "unknown"));
   notify("BiliBili Cookie", "保存成功", "来源: " + source + "\nUID: " + (uid || "unknown"), true);
   return true;
 }
@@ -250,12 +260,14 @@ function showStatus() {
     "CSRF: " + (csrf ? "已保存" : "缺失"),
     "上次运行: " + (read(STORE.lastRun) || "无")
   ].join("\n");
+  log(message);
   notify("BiliBili 状态", "", message, true);
   done();
 }
 
 function clearCookie() {
   clearStore();
+  log("BiliBili Cookie 已清除。");
   notify("BiliBili Cookie", "已清除", "本地保存的 Cookie、UA、UID、CSRF 和运行记录已清空。", true);
   done();
 }
@@ -710,12 +722,14 @@ async function vipBigPointSign(results) {
 
 async function runTasks(manual) {
   if (!shouldRunNow(manual)) {
+    log("BiliBili Daily 未到开始时间或今日已执行，跳过。");
     done();
     return;
   }
   var cookie = read(STORE.cookie);
   var csrf = getCookiePart(cookie, "bili_jct") || read(STORE.csrf);
   if (!validCookie(cookie)) {
+    log("BiliBili Daily 未配置 Cookie，请先网页捕获或手动保存 Cookie。");
     notify("BiliBili Daily", "未配置 Cookie", "请先网页捕获或手动保存 Cookie。", true);
     done();
     return;
@@ -723,6 +737,16 @@ async function runTasks(manual) {
   if (csrf) write(STORE.csrf, csrf);
 
   var results = [];
+  log(
+    "BiliBili Daily 启动: action=" +
+      (OPTIONS.action || "auto") +
+      ", taskDonateCoin=" +
+      optionValue("taskDonateCoin", "") +
+      ", donateMode=" +
+      optionValue("donateMode", "") +
+      ", coinTarget=" +
+      optionValue("coinTarget", "")
+  );
   var user = null;
   var status = null;
   try {
@@ -756,6 +780,7 @@ async function runTasks(manual) {
 
   var hasFailure = /失败|缺少|未配置|非法|下线|不能|异常|终止|Error|NA/i.test(results.join("\n"));
   var summary = results.join("\n");
+  log(summary);
   write(STORE.lastRun, new Date().toISOString());
   if (!manual) write(STORE.lastRunDate, todayString());
   if (OPTIONS.notifyMode === "always" || manual || (OPTIONS.notifyMode === "failure" && hasFailure)) {
@@ -812,11 +837,55 @@ function readInt(value, fallback) {
   return isNaN(n) ? fallback : n;
 }
 
-function boolOpt(key, fallback) {
+function optionValue(key, fallback) {
   var value = OPTIONS[key];
+  if (key === "taskDonateCoin") {
+    var donateMode = clean(OPTIONS.donateMode || "");
+    if (donateMode && donateMode.toLowerCase() !== "off" && donateMode !== "关闭") return donateMode;
+    if (value === undefined || value === null || value === "") {
+      value = OPTIONS.donateCoin || OPTIONS.enableDonateCoin || OPTIONS.coinEnabled || donateMode;
+    }
+  }
+  if (value === undefined || value === null || value === "") return fallback;
+  return clean(value);
+}
+
+function boolOpt(key, fallback) {
+  var value = optionValue(key, "");
   if (value === undefined || value === null || value === "") return fallback;
   value = String(value).toLowerCase();
-  return value === "1" || value === "true" || value === "yes" || value === "on";
+  if (value.indexOf("{") >= 0 && value.indexOf("}") >= 0) return fallback;
+  if (
+    value === "1" ||
+    value === "true" ||
+    value === "yes" ||
+    value === "on" ||
+    value === "open" ||
+    value === "enable" ||
+    value === "enabled" ||
+    value === "开启" ||
+    value === "打开" ||
+    value === "启用" ||
+    value === "开" ||
+    value === "是"
+  ) {
+    return true;
+  }
+  if (
+    value === "0" ||
+    value === "false" ||
+    value === "no" ||
+    value === "off" ||
+    value === "close" ||
+    value === "disable" ||
+    value === "disabled" ||
+    value === "关闭" ||
+    value === "关" ||
+    value === "否"
+  ) {
+    return false;
+  }
+  return fallback;
 }
 
 (function main() {
@@ -826,6 +895,6 @@ function boolOpt(key, fallback) {
   if (action === "savecookie" || action === "save") return saveManualCookie();
   if (action === "clearcookie" || action === "clear") return clearCookie();
   if (action === "status") return showStatus();
-  if (action === "manual" || action === "daily") return runTasks(true);
+  if (action === "manual" || action === "daily" || action === "donate") return runTasks(true);
   return runTasks(false);
 })();
