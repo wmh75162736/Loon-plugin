@@ -2,10 +2,16 @@
 中视频 - Loon 专用脚本
 
 参数示例：
+accountRemark=备注
+secretId=商户secretId
+secretKey=商户secretKey
+
+多账号高级格式：
 zsp=备注%23secretId%23secretKey
 zsp=账号1%23secretId%23secretKey%0A账号2%23secretId%23secretKey%23固定deviceId
 
 可选参数：
+deviceId=固定设备码
 ZSP_CDK=兑换码
 maxAds=50
 notify=1
@@ -22,6 +28,10 @@ const CACHE_KEY = "zsp.device_cache.v1";
 let deviceCache = {};
 let runtimeConfig = {
   zsp: "",
+  accountRemark: "",
+  secretId: "",
+  secretKey: "",
+  deviceId: "",
   cdk: "",
   maxAds: 50,
   notify: true,
@@ -92,6 +102,15 @@ function safeDecode(value) {
 
 function loadRuntimeConfig() {
   const args = parseArguments(typeof $argument === "string" ? $argument : "");
+  runtimeConfig.accountRemark =
+    (args.accountRemark || args.remark || readStore("ZSP_REMARK") || "默认账号").trim();
+  runtimeConfig.secretId =
+    (args.secretId || readStore("ZSP_SECRET_ID") || "").trim();
+  runtimeConfig.secretKey =
+    (args.secretKey || readStore("ZSP_SECRET_KEY") || "").trim();
+  runtimeConfig.deviceId =
+    (args.deviceId || readStore("ZSP_DEVICE_ID") || "").trim();
+
   runtimeConfig.zsp =
     args.ZSP ||
     args.zsp ||
@@ -100,6 +119,18 @@ function loadRuntimeConfig() {
     readStore("zsp") ||
     readStore("AD_WATCH_ACCOUNTS") ||
     "";
+
+  if (!runtimeConfig.zsp && runtimeConfig.secretId && runtimeConfig.secretKey) {
+    const parts = [
+      runtimeConfig.accountRemark || "默认账号",
+      runtimeConfig.secretId,
+      runtimeConfig.secretKey
+    ];
+    if (runtimeConfig.deviceId) {
+      parts.push(runtimeConfig.deviceId);
+    }
+    runtimeConfig.zsp = parts.join("#");
+  }
 
   runtimeConfig.cdk =
     (args.ZSP_CDK || args.zsp_cdk || readStore("ZSP_CDK") || "").trim();
@@ -245,7 +276,7 @@ async function main() {
   const accounts = loadAccounts();
 
   if (accounts.length === 0) {
-    const message = "未找到有效账号配置，请检查 zsp/ZSP 参数或持久化存储。";
+    const message = "未找到有效账号配置，请检查 secretId/secretKey 或 zsp/ZSP 参数。";
     console.log(message);
     notify("运行失败", message);
     return;
@@ -283,7 +314,7 @@ function loadAccounts() {
   const envValue = normalizeAccountConfig(runtimeConfig.zsp);
 
   if (!envValue) {
-    console.log("请设置 zsp/ZSP 参数，或在持久化存储中写入 ZSP / AD_WATCH_ACCOUNTS。");
+    console.log("请设置 secretId/secretKey，或填写 zsp/ZSP 多账号参数。");
     return accounts;
   }
 
