@@ -130,6 +130,8 @@ Loon 官方文档中，脚本 `argument` 建议整体使用双引号，例如 `a
 4. 运行 `中视频_测试登录`，它只按原青龙脚本的 `secretKeyLogin` 请求测试登录。
 5. 查看运行日志中的 `登录失败: code=..., message=...` 和 `登录响应体`，这是平台接口返回的信息。
 
+如果 `中视频_查看状态` 显示 `secretId` 只有 2 个字符，而 `secretKey` 显示成你原来的 `secretId`，说明 Loon 本地旧配置发生了字段错位。最新版保存逻辑会优先使用 `zsp` 完整账号串，并自动修正 `secretId=备注、secretKey=真正secretId、deviceId=真正secretKey` 这种错位。遇到这种情况请重新运行一次 `中视频_保存账号`，再运行 `中视频_查看状态` 确认 `secretId` 已恢复为 32 位。
+
 登录请求对比：Loon 版使用的登录 URL、body 字段和 `app-device` 请求头与原青龙脚本一致，登录 body 仍是：
 
 ```json

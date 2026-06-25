@@ -30,6 +30,8 @@ let deviceCache = {};
 let runtimeConfig = {
   action: "auto",
   zsp: "",
+  inputZsp: "",
+  storedZsp: "",
   accountRemark: "",
   secretId: "",
   secretKey: "",
@@ -145,6 +147,8 @@ function loadRuntimeConfig() {
     readStore("ZSP") ||
     readStore("AD_WATCH_ACCOUNTS") ||
     "";
+  runtimeConfig.inputZsp = inputZsp;
+  runtimeConfig.storedZsp = storedZsp;
   runtimeConfig.zsp = runtimeConfig.action === "save" ? inputZsp : (inputZsp || storedZsp);
 
   runtimeConfig.zsp = cleanArgValue(runtimeConfig.zsp);
@@ -184,6 +188,12 @@ function loadRuntimeConfig() {
 }
 
 function buildAccountConfigFromArgs() {
+  const directZsp = findAccountConfigCandidate(runtimeConfig.inputZsp);
+  if (directZsp) return directZsp;
+
+  const shiftedFields = buildShiftedAccountConfig();
+  if (shiftedFields) return shiftedFields;
+
   const hasSeparateFields =
     runtimeConfig.secretId &&
     runtimeConfig.secretKey &&
@@ -200,7 +210,6 @@ function buildAccountConfigFromArgs() {
   }
 
   const zsp = findAccountConfigCandidate(
-    runtimeConfig.zsp,
     runtimeConfig.accountRemark,
     runtimeConfig.secretId,
     runtimeConfig.secretKey,
@@ -216,6 +225,32 @@ function buildAccountConfigFromArgs() {
   ];
   if (runtimeConfig.deviceId) parts.push(runtimeConfig.deviceId);
   return parts.join("#");
+}
+
+function buildShiftedAccountConfig() {
+  if (
+    runtimeConfig.accountRemark &&
+    runtimeConfig.secretId &&
+    runtimeConfig.secretKey &&
+    runtimeConfig.deviceId &&
+    !looksLikeSecret(runtimeConfig.secretId) &&
+    looksLikeSecret(runtimeConfig.secretKey) &&
+    looksLikeSecret(runtimeConfig.deviceId)
+  ) {
+    console.log("检测到账号字段错位，已按 备注#secretId#secretKey 修正保存。");
+    return [
+      runtimeConfig.accountRemark || "默认账号",
+      runtimeConfig.secretKey,
+      runtimeConfig.deviceId
+    ].join("#");
+  }
+
+  return "";
+}
+
+function looksLikeSecret(value) {
+  const str = cleanArgValue(value);
+  return /^[A-Za-z0-9]{32,64}$/.test(str);
 }
 
 function findAccountConfigCandidate() {

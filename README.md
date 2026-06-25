@@ -34,6 +34,8 @@ https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubuserconten
 6. 再运行 `中视频_查看状态`，确认账号数量不是 0。
 7. 如需单独验证密钥，先运行 `中视频_测试登录`；确认成功后再执行每日任务或立即运行。
 
+如果状态里 `secretId` 只有 2 个字符，而 `secretKey` 显示成原来的 `secretId`，这是本地旧配置字段错位。重新运行最新版 `中视频_保存账号` 后再查看状态即可修正。
+
 功能：
 - 商户密钥登录并获取 `token`。
 - 每日签到，已签到时自动继续后续任务。
