@@ -21,7 +21,7 @@ notify=1
 
 const ENV_NAME = "中视频";
 const USER_AGENT = "Mozilla/5.0 (Linux; Android 15; 23013RK75C Build/AQ3A.250226.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0.6778.260 Mobile Safari/537.36 (Immersed/39.42857) Html5Plus/1.0";
-const BASE_URL = "https://api.qarfmkp.cn";
+const BASE_URL = "https://x1.zsptv.online";
 const CACHE_KEY = "zsp.device_cache.v1";
 const ACCOUNT_STORE_KEY = "zsp.accounts.v1";
 const CDK_STORE_KEY = "zsp.cdk.v1";
@@ -520,8 +520,7 @@ function buildHeaders(account, token) {
     Accept: "*/*",
     "User-Agent": USER_AGENT,
     "app-device": buildDeviceHeader(account),
-    "Content-Type": "application/json",
-    Host: "api.qarfmkp.cn"
+    "Content-Type": "application/json"
   };
 
   if (token) {
