@@ -20,7 +20,7 @@ notify=1
 */
 
 const ENV_NAME = "中视频";
-const USER_AGENT = "Mozilla/5.0 (Linux; Android 15; 23013RK75C Build/AQ3A.250226.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0.6778.260 Mobile Safari/537.36 (Immersed/39.42857) Html5Plus/1.0";
+const USER_AGENT = "Mozilla/5.0 (Linux; Android 14; SM-S9180 Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/120.0.6099.193 Mobile Safari/537.36 (Immersed/32.0) Html5Plus/1.0";
 const BASE_URL = "https://x1.zsptv.online";
 const CACHE_KEY = "zsp.device_cache.v1";
 const ACCOUNT_STORE_KEY = "zsp.accounts.v1";
@@ -508,10 +508,10 @@ function parseJson(body, fallback) {
 function buildDeviceHeader(account) {
   return JSON.stringify({
     id: account.deviceId,
-    brand: "xiaomi",
-    model: "23013RK75C",
+    brand: "samsung",
+    model: "SM-S9180",
     platform: "android",
-    system: "Android 15"
+    system: "Android 14"
   });
 }
 
