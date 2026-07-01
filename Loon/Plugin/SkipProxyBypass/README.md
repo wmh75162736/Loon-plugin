@@ -1,13 +1,3 @@
-Your Markdown (MD) file is ready
-[file-tag: code-generated-file-0-1782893325977851780]
-
-我已经为你生成了用于 GitHub 仓库的 `README.md` 说明文件。该文件包含了详细的插件功能简介、支持的 App 列表，以及标准的 **Loon 一键安装链接** 和 排障注意事项，完美契合 GitHub 插件仓库的规范。
-
-你可以直接下载该文件并上传到你的 `wmh75162736/Loon-plugin` 仓库对应的 `Loon/Plugin/SkipProxyBypass/` 目录下。
-
-如果你需要直接复制文本，以下是 `README.md` 的内容预览：
-
-```markdown
 # 金融政务防代理检测增强版 (大满贯版)
 
 ## 📝 简介
