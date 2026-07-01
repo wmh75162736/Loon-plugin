@@ -17,7 +17,8 @@
 ### 一键安装 (推荐)
 仅需点击下方链接，即可自动跳转到 Loon 中完成安装：
 
-[🔗 点击这里一键安装](loon://plugin?op=install&url=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/SkipProxyBypass/financial_gov_bypass.plugin)
+
+[🔗 点击这里一键安装](https://www.nsloon.com/openloon/import?plugin=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/SkipProxyBypass/financial_gov_bypass.plugin)
 
 ### 手动安装
 1. 打开 Loon，进入底部导航栏的 **插件 (Plugin)** 页面。
