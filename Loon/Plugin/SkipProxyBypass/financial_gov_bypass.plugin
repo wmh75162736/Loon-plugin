@@ -1,17 +1,17 @@
 #!name=金融政务防代理检测增强版(大满贯版)
-#!desc=全面跳过国内主流银行、云闪付、网联及政务平台的代理检测。包含 Real-IP(防Fake-IP劫持) + Skip-Proxy(底层绕过TUN) + MitM双重排除，彻底解决银行App网络安全风险报错。
+#!desc=全面跳过国内主流银行、云闪付、网联及政务平台的代理检测。包含 Real-IP + Skip-Proxy + MitM双重排除，新增农行隐藏CDN域名与硬编码IP直连网段，彻底解决银行网络安全风控报错。
 #!author=Gemini
 #!icon=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Bypass.png
 
 [General]
-# 1. 强制返回真实 IP，防止 Fake-IP 将流量重新劫持进 VPN 隧道
-real-ip = %APPEND% *.unionpay.com, *.unionpaysecure.com, *.95516.com, *.nucc.com, *.abchina.com, *.abchina.com.cn, *.icbc.com.cn, *.ccb.com, *.boc.cn, *.bankcomm.com, *.psbc.com, *.cmbchina.com, *.spdb.com.cn, *.citicbank.com, *.cebbank.com, *.hxb.com.cn, *.cmbc.com.cn, *.cgbchina.com.cn, *.cib.com.cn, *.pingan.com, *.pingan.com.cn, *.czbank.com, *.cbhb.com.cn, *.hfbank.com.cn, *.bankofbeijing.com.cn, *.bosc.cn, *.jsbchina.cn, *.nbcb.com.cn, *.gov.cn
+# 1. 强制返回真实 IP
+real-ip = %APPEND% *.unionpay.com, *.unionpaysecure.com, *.95516.com, *.nucc.com, *.abchina.com, *.abchina.com.cn, *.icbc.com.cn, *.ccb.com, *.boc.cn, *.bankcomm.com, *.psbc.com, *.cmbchina.com, *.spdb.com.cn, *.citicbank.com, *.cebbank.com, *.hxb.com.cn, *.cmbc.com.cn, *.cgbchina.com.cn, *.cib.com.cn, *.pingan.com, *.pingan.com.cn, *.czbank.com, *.cbhb.com.cn, *.hfbank.com.cn, *.bankofbeijing.com.cn, *.bosc.cn, *.jsbchina.cn, *.nbcb.com.cn, *.gov.cn, *.wswebcdn.com, *.dnse0.cn, *.dbankcloud.cn
 
-# 2. 系统层级绕过代理（Bypass TUN），让流量完全不经过 Loon
-skip-proxy = %APPEND% *.unionpay.com, *.unionpaysecure.com, *.95516.com, *.nucc.com, *.abchina.com, *.abchina.com.cn, *.icbc.com.cn, *.ccb.com, *.boc.cn, *.bankcomm.com, *.psbc.com, *.cmbchina.com, *.spdb.com.cn, *.citicbank.com, *.cebbank.com, *.hxb.com.cn, *.cmbc.com.cn, *.cgbchina.com.cn, *.cib.com.cn, *.pingan.com, *.pingan.com.cn, *.czbank.com, *.cbhb.com.cn, *.hfbank.com.cn, *.bankofbeijing.com.cn, *.bosc.cn, *.jsbchina.cn, *.nbcb.com.cn, *.gov.cn
+# 2. 系统层级绕过代理（重点新增了农行的 CDN 和 IP 网段）
+skip-proxy = %APPEND% *.unionpay.com, *.unionpaysecure.com, *.95516.com, *.nucc.com, *.abchina.com, *.abchina.com.cn, *.icbc.com.cn, *.ccb.com, *.boc.cn, *.bankcomm.com, *.psbc.com, *.cmbchina.com, *.spdb.com.cn, *.citicbank.com, *.cebbank.com, *.hxb.com.cn, *.cmbc.com.cn, *.cgbchina.com.cn, *.cib.com.cn, *.pingan.com, *.pingan.com.cn, *.czbank.com, *.cbhb.com.cn, *.hfbank.com.cn, *.bankofbeijing.com.cn, *.bosc.cn, *.jsbchina.cn, *.nbcb.com.cn, *.gov.cn, *.wswebcdn.com, *.dnse0.cn, *.dbankcloud.cn, 123.121.153.0/24, 211.94.154.0/24, 210.22.250.0/24, 221.204.163.0/24, 221.15.57.0/24
 
 [Rule]
-# 3. 兜底直连规则（以防万一）
+# 3. 兜底直连规则
 DOMAIN-SUFFIX,unionpay.com,DIRECT
 DOMAIN-SUFFIX,unionpaysecure.com,DIRECT
 DOMAIN-SUFFIX,95516.com,DIRECT
@@ -41,8 +41,13 @@ DOMAIN-SUFFIX,bosc.cn,DIRECT
 DOMAIN-SUFFIX,jsbchina.cn,DIRECT
 DOMAIN-SUFFIX,nbcb.com.cn,DIRECT
 DOMAIN-SUFFIX,gov.cn,DIRECT
+DOMAIN-SUFFIX,wswebcdn.com,DIRECT
+DOMAIN-SUFFIX,dnse0.cn,DIRECT
+DOMAIN-SUFFIX,dbankcloud.cn,DIRECT
 
 [MitM]
-# 4. 强制排除语法 (-*)，对抗其他去广告脚本的误伤解密
-hostname = %APPEND% -*.unionpay.com, -*.unionpaysecure.com, -*.95516.com, -*.nucc.com, -*.abchina.com, -*.abchina.com.cn, -*.icbc.com.cn, -*.ccb.com, -*.boc.cn, -*.bankcomm.com, -*.psbc.com, -*.cmbchina.com, -*.spdb.com.cn, -*.citicbank.com, -*.cebbank.com, -*.hxb.com.cn, -*.cmbc.com.cn, -*.cgbchina.com.cn, -*.cib.com.cn, -*.pingan.com, -*.pingan.com.cn, -*.czbank.com, -*.cbhb.com.cn, -*.hfbank.com.cn, -*.bankofbeijing.com.cn, -*.bosc.cn, -*.jsbchina.cn, -*.nbcb.com.cn, -*.gov.cn
-skip = %APPEND% *.unionpay.com, *.unionpaysecure.com, *.95516.com, *.nucc.com, *.abchina.com, *.abchina.com.cn, *.icbc.com.cn, *.ccb.com, *.boc.cn, *.bankcomm.com, *.psbc.com, *.cmbchina.com, *.spdb.com.cn, *.citicbank.com, *.cebbank.com, *.hxb.com.cn, *.cmbc.com.cn, *.cgbchina.com.cn, *.cib.com.cn, *.pingan.com, *.pingan.com.cn, *.czbank.com, *.cbhb.com.cn, *.hfbank.com.cn, *.bankofbeijing.com.cn, *.bosc.cn, *.jsbchina.cn, *.nbcb.com.cn, *.gov.cn
+# 4. 强制排除语法 (-*)，具有最高优先级，对抗其他脚本的误伤解密
+hostname = %APPEND% -*.unionpay.com, -*.unionpaysecure.com, -*.95516.com, -*.nucc.com, -*.abchina.com, -*.abchina.com.cn, -*.icbc.com.cn, -*.ccb.com, -*.boc.cn, -*.bankcomm.com, -*.psbc.com, -*.cmbchina.com, -*.spdb.com.cn, -*.citicbank.com, -*.cebbank.com, -*.hxb.com.cn, -*.cmbc.com.cn, -*.cgbchina.com.cn, -*.cib.com.cn, -*.pingan.com, -*.pingan.com.cn, -*.czbank.com, -*.cbhb.com.cn, -*.hfbank.com.cn, -*.bankofbeijing.com.cn, -*.bosc.cn, -*.jsbchina.cn, -*.nbcb.com.cn, -*.gov.cn, -*.wswebcdn.com, -*.dnse0.cn, -*.dbankcloud.cn
+
+# 5. 常规跳过解密列表
+skip = %APPEND% *.unionpay.com, *.unionpaysecure.com, *.95516.com, *.nucc.com, *.abchina.com, *.abchina.com.cn, *.icbc.com.cn, *.ccb.com, *.boc.cn, *.bankcomm.com, *.psbc.com, *.cmbchina.com, *.spdb.com.cn, *.citicbank.com, *.cebbank.com, *.hxb.com.cn, *.cmbc.com.cn, *.cgbchina.com.cn, *.cib.com.cn, *.pingan.com, *.pingan.com.cn, *.czbank.com, *.cbhb.com.cn, *.hfbank.com.cn, *.bankofbeijing.com.cn, *.bosc.cn, *.jsbchina.cn, *.nbcb.com.cn, *.gov.cn, *.wswebcdn.com, *.dnse0.cn, *.dbankcloud.cn
