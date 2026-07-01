@@ -1,6 +1,6 @@
 #!name=金融政务防代理检测增强版(大满贯版)
-#!desc=全面跳过国内主流银行(农行/工行/建行/中行/交行/邮储/招商/浦发/中信/光大/华夏/民生/广发/兴业/平安/浙商/渤海/恒丰/北京/上海/江苏/宁波)、云闪付、网联及国家政务平台(.gov.cn)的代理检测与MITM解密，从根本上解决断网与支付报错。
-#!author=wmh75162736
+#!desc=全面跳过国内主流银行(农行/工行/建行/中行/交行/邮储/股份制等)、云闪付、网联及国家政务平台(.gov.cn)的代理检测与MITM解密。采用强制排除(-hostname)语法，对抗去广告插件冲突，彻底解决断网与支付报错。已排除12306。
+#!author=Gemini
 #!icon=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Bypass.png
 
 [Rule]
@@ -35,4 +35,8 @@ DOMAIN-SUFFIX,nbcb.com.cn,DIRECT
 DOMAIN-SUFFIX,gov.cn,DIRECT
 
 [MitM]
+# 1. 强制排除语法 (-*)，具有最高优先级，对抗其他脚本的误伤解密
+hostname = %APPEND% -*.unionpay.com, -*.unionpaysecure.com, -*.95516.com, -*.nucc.com, -*.abchina.com, -*.abchina.com.cn, -*.icbc.com.cn, -*.ccb.com, -*.boc.cn, -*.bankcomm.com, -*.psbc.com, -*.cmbchina.com, -*.spdb.com.cn, -*.citicbank.com, -*.cebbank.com, -*.hxb.com.cn, -*.cmbc.com.cn, -*.cgbchina.com.cn, -*.cib.com.cn, -*.pingan.com, -*.pingan.com.cn, -*.czbank.com, -*.cbhb.com.cn, -*.hfbank.com.cn, -*.bankofbeijing.com.cn, -*.bosc.cn, -*.jsbchina.cn, -*.nbcb.com.cn, -*.gov.cn
+
+# 2. 常规跳过解密列表
 skip = %APPEND% *.unionpay.com, *.unionpaysecure.com, *.95516.com, *.nucc.com, *.abchina.com, *.abchina.com.cn, *.icbc.com.cn, *.ccb.com, *.boc.cn, *.bankcomm.com, *.psbc.com, *.cmbchina.com, *.spdb.com.cn, *.citicbank.com, *.cebbank.com, *.hxb.com.cn, *.cmbc.com.cn, *.cgbchina.com.cn, *.cib.com.cn, *.pingan.com, *.pingan.com.cn, *.czbank.com, *.cbhb.com.cn, *.hfbank.com.cn, *.bankofbeijing.com.cn, *.bosc.cn, *.jsbchina.cn, *.nbcb.com.cn, *.gov.cn
