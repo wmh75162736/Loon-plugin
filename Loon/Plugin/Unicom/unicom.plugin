@@ -1,9 +1,11 @@
-#!name=Unicom Token Extractor
-#!desc=Auto extract token_online#appId from China Unicom login response
-#!author=ChatGPT
+#!name=中国联通 Token 提取
+#!desc=自动提取 token_online 和 appId，生成 token_online#appId，用于青龙免密登录
+#!author=吴先森
+#!homepage=https://github.com/wmh75162736/Loon-plugin
+#!icon=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Icon/ChinaUnicom.png
 
 [Script]
-http-response ^https:\/\/m\.client\.10010\.com\/mobileService\/login\.htm script-path=unicom.js, requires-body=true, timeout=60
+http-response ^https:\/\/m\.client\.10010\.com\/mobileService\/login\.htm$ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/Unicom/unicom.js, requires-body=true, timeout=60, tag=中国联通 Token 提取, enable=true
 
 [MITM]
 hostname = m.client.10010.com
