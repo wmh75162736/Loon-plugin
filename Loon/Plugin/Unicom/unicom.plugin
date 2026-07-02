@@ -1,10 +1,14 @@
-#!name=中国联通 Token 提取（Debug）
-#!desc=调试联通登录接口，自动发现 token_online / appId
+#!name=通用 Token 提取引擎 (V5.0 Ultimate)
+#!desc=真正的多平台 Provider 嗅探框架。抛弃死板接口依赖，无感拦截并提纯联通、移动等平台的持久登录凭证。
 #!author=吴先森
 #!homepage=https://github.com/wmh75162736/Loon-plugin
+#!icon=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Server.png
 
 [Script]
-http-response ^https:\/\/m\.client\.10010\.com\/.* script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/Unicom/unicom_debug.js, requires-body=true, timeout=60, tag=联通调试
+# 使用通配正则覆盖目标厂商（10010/10086）的所有潜在 API 接口。
+# 所有流量将交由 JS 引擎内部进行 Content-Type 预检、Provider 智能路由和命中短路。
+http-response ^https?:\/\/.*(10010|10086)\.(com|cn)\/.* script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/Unicom/Universal_Token_Engine.js, requires-body=true, timeout=60, tag=Universal_Token_Engine
 
 [MITM]
-hostname = %APPEND% m.client.10010.com
+# 动态追加目标平台的根域名，确保抓包工具能解密对应域名的 HTTPS 流量
+hostname = %APPEND% *.10010.com, *.10010.cn, *.10086.cn
