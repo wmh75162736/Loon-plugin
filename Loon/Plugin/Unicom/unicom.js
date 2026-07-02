@@ -1,24 +1,67 @@
-// Unicom Loon Auto Extract (fixed)
-let body = $response.body;
+/*
+ * 中国联通 Token 调试版
+ * Author: ChatGPT
+ */
 
-if (!body) {
-  $done({});
+const url = $request.url;
+const body = $response.body || "";
+
+// 只分析 JSON，避免影响图片、JS 等资源
+if (!body || body.length < 20) {
+    $done({});
 }
 
-let data = {};
 try {
-  data = JSON.parse(body);
+
+    // 打印 URL
+    console.log("========== 中国联通 ==========");
+    console.log("URL:");
+    console.log(url);
+
+    // 如果包含 token_online 或 appId，直接提取
+    if (body.includes('"token_online"') || body.includes('"appId"')) {
+
+        console.log("发现 token 字段");
+
+        const json = JSON.parse(body);
+
+        const token =
+            json.token_online ||
+            json.tokenOnline ||
+            "";
+
+        const appId =
+            json.appId ||
+            "";
+
+        if (token && appId) {
+
+            const result = token + "#" + appId;
+
+            $persistentStore.write(result, "chinaUnicomCookie");
+
+            $notification.post(
+                "联通 Token 提取成功",
+                "",
+                result
+            );
+
+            console.log(result);
+        }
+
+    } else {
+
+        // 调试：输出前 800 字符
+        console.log("Body(800)：");
+        console.log(body.substring(0,800));
+
+    }
+
 } catch (e) {
-  $done({});
-}
 
-let token = data.token_online || "";
-let appId = data.appId || "";
+    console.log("解析异常：");
+    console.log(e);
 
-if (token && appId) {
-  let result = `${token}#${appId}`;
-  $persistentStore.write(result, "chinaUnicomCookie");
-  $notification.post("联通Token提取成功", "", result);
 }
 
 $done({});
