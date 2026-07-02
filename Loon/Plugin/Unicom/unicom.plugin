@@ -1,0 +1,9 @@
+#!name=Unicom Token Extractor
+#!desc=Auto extract token_online#appId from China Unicom login response
+#!author=ChatGPT
+
+[Script]
+http-response ^https:\/\/m\.client\.10010\.com\/mobileService\/login\.htm script-path=unicom.js, requires-body=true, timeout=60
+
+[MITM]
+hostname = m.client.10010.com
