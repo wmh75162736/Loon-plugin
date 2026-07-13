@@ -1,5 +1,5 @@
 /**
- * @name 呆呆面板全自动抓取同步 (参数自适应修正版)
+ * @name 呆呆面板全自动抓取同步 (官方文档完全适配版)
  */
 
 const HOST = "https://dai.atiny.fun:2"; 
@@ -50,8 +50,8 @@ const cookie = headers["Cookie"] || headers["cookie"] || "";
 
 function checkFreq(key) {
     const lastTime = $persistentStore.read(`LAST_PUSH_${key}`);
-    // 测试阶段，把防刷新冷却改为 30 秒，方便反复测试
-    if (lastTime && (Date.now() - parseInt(lastTime) < 1000 * 30)) {
+    // 5 分钟正常防频繁刷新机制
+    if (lastTime && (Date.now() - parseInt(lastTime) < 1000 * 60 * 5)) {
         return true; 
     }
     $persistentStore.write(Date.now().toString(), `LAST_PUSH_${key}`);
@@ -93,68 +93,79 @@ function request(method, reqUrl, reqHeaders = {}, reqBody = null) {
 }
 
 /**
- * 核心对接逻辑
+ * 核心对接逻辑 (完全遵循呆呆面板官方 Open API 文档)
  */
 async function pushToDaiPanel(envName, envValue, remarkText) {
     try {
-        console.log("-> 步骤1：开始智能获取Token...");
+        console.log("-> 步骤1：开始获取Token...");
         
-        let token = null;
+        // 1. 获取 Token (POST /api/open-api/token)
+        const tokenPayload = {
+            app_key: APP_KEY,
+            app_secret: APP_SECRET
+        };
         
-        // 方案 A 和 B：应对不同作者设计的严格参数校验
-        const testPayloads = [
-            { name: "格式A (client_id)", body: { client_id: APP_KEY, client_secret: APP_SECRET } },
-            { name: "格式B (appKey)", body: { appKey: APP_KEY, appSecret: APP_SECRET } }
-        ];
+        const tokenRes = await request(
+            "POST", 
+            `${HOST}/api/open-api/token`, 
+            { "Content-Type": "application/json" }, 
+            JSON.stringify(tokenPayload)
+        );
         
-        for (const payload of testPayloads) {
-            console.log(`尝试使用 ${payload.name} 请求Token...`);
-            const tokenRes = await request(
-                "POST", 
-                `${HOST}/api/open-api/token`, 
-                { "Content-Type": "application/json" }, 
-                JSON.stringify(payload.body)
-            );
-            
-            console.log(`[Token返回] ${JSON.stringify(tokenRes)}`);
-            
-            token = tokenRes?.data?.access_token || tokenRes?.data?.token || tokenRes?.access_token || tokenRes?.token;
-            if (token) {
-                console.log(`-> ${payload.name} 验证成功，已拿到 Token！`);
-                break; // 拿到Token就立刻跳出循环
-            }
-        }
-        
+        const token = tokenRes?.data?.access_token || tokenRes?.access_token;
         if (!token) {
-            throw new Error(`全部鉴权格式均被面板拒绝，请检查面板的密钥和 API 文档要求`);
+            throw new Error(`Token 获取失败: ${JSON.stringify(tokenRes)}`);
         }
+        console.log("-> ✅ Token提取成功！");
 
         const authHeaders = {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
         };
 
+        // 2. 搜索变量 (GET /api/envs?keyword=xxx&page_size=100)
         console.log(`-> 步骤2：搜索面板变量 [${envName}]...`);
-        const searchRes = await request("GET", `${HOST}/api/envs?searchValue=${envName}`, authHeaders);
+        const searchUrl = `${HOST}/api/envs?keyword=${envName}&page_size=100`;
+        const searchRes = await request("GET", searchUrl, authHeaders);
+        
         const envs = searchRes.data || [];
+        // 匹配变量名相同的项
         const existEnv = envs.find(e => e.name === envName);
 
+        // 3. 执行更新或新增
         if (existEnv) {
-            console.log(`-> 步骤3：变量已存在，执行覆盖更新...`);
-            await request("PUT", `${HOST}/api/envs/${existEnv.id}`, authHeaders, JSON.stringify({
+            console.log(`-> 步骤3：变量已存在，执行更新 (PUT /api/envs/${existEnv.id})...`);
+            
+            // PUT 请求，Body 传 JSON 对象
+            const putRes = await request("PUT", `${HOST}/api/envs/${existEnv.id}`, authHeaders, JSON.stringify({
                 name: envName,
                 value: envValue,
                 remarks: remarkText 
             }));
-            $notification.post("🤖 面板变量自动同步", `✅ ${envName} 更新成功`, `已覆盖`);
+            
+            if (putRes && putRes.message) {
+                console.log(`✅ 呆呆面板: [${envName}] 更新成功`);
+                $notification.post("🤖 面板变量自动同步", `✅ ${envName} 更新成功`, `已覆盖并备注: ${remarkText}`);
+            } else {
+                throw new Error(`更新失败: ${JSON.stringify(putRes)}`);
+            }
+            
         } else {
-            console.log(`-> 步骤3：变量不存在，执行新建变量...`);
-            await request("POST", `${HOST}/api/envs`, authHeaders, JSON.stringify([{
+            console.log(`-> 步骤3：变量不存在，执行新建变量 (POST /api/envs)...`);
+            
+            // POST 请求，Body 传 JSON 对象 (注意：呆呆面板这里不是数组)
+            const postRes = await request("POST", `${HOST}/api/envs`, authHeaders, JSON.stringify({
                 name: envName,
                 value: envValue,
                 remarks: remarkText
-            }]));
-            $notification.post("🤖 面板变量自动同步", `✅ ${envName} 新建成功`, `已创建`);
+            }));
+            
+            if (postRes && postRes.message) {
+                console.log(`✅ 呆呆面板: [${envName}] 新增成功`);
+                $notification.post("🤖 面板变量自动同步", `✅ ${envName} 新建成功`, `已创建并备注: ${remarkText}`);
+            } else {
+                throw new Error(`新建失败: ${JSON.stringify(postRes)}`);
+            }
         }
         console.log("-> ✅ 整个推送流程圆满完成！");
         
