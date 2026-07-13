@@ -21,7 +21,6 @@ const cookie = headers["Cookie"] || headers["cookie"] || "";
         if (cookie.includes("vqq_refresh_token=")) {
             if (checkFreq("TENV_COOKIE")) return;
             console.log("成功提取[腾讯视频]Cookie，准备推送至呆呆面板");
-            // 这里传入动态备注：腾讯视频自动同步
             await pushToDaiPanel("TENV_COOKIE", cookie, "腾讯视频自动同步");
         }
     }
@@ -31,7 +30,6 @@ const cookie = headers["Cookie"] || headers["cookie"] || "";
         if (actId && cookie) {
             if (checkFreq("MI_LOTTERY")) return;
             console.log("成功提取[小米抽奖]数据，准备推送至呆呆面板");
-            // 这里传入动态备注：小米抽奖自动同步
             await pushToDaiPanel("MI_LOTTERY", `${actId}#${cookie}`, "小米抽奖自动同步");
         }
     }
@@ -41,7 +39,6 @@ const cookie = headers["Cookie"] || headers["cookie"] || "";
         if (wpsSid) {
             if (checkFreq("WPS_SID")) return;
             console.log("成功提取[WPS]数据，准备推送至呆呆面板");
-            // 这里传入动态备注：WPS自动同步
             await pushToDaiPanel("WPS_SID", wpsSid, "WPS自动同步");
         }
     }
@@ -53,9 +50,6 @@ const cookie = headers["Cookie"] || headers["cookie"] || "";
 
 // ===== 工具函数区 =====
 
-/**
- * 频率限制：防止短时间内多次触发请求轰炸面板 (冷却时间 5 分钟)
- */
 function checkFreq(key) {
     const lastTime = $persistentStore.read(`LAST_PUSH_${key}`);
     if (lastTime && (Date.now() - parseInt(lastTime) < 1000 * 60 * 5)) {
@@ -65,17 +59,11 @@ function checkFreq(key) {
     return false;
 }
 
-/**
- * 提取单个 Cookie 键值
- */
 function getCookieVal(cookieStr, name) {
     const match = new RegExp(`(^|;\\s*)${name}=([^;]+)`).exec(cookieStr);
     return match ? match[2] : null;
 }
 
-/**
- * 提取小米抽奖的 actId
- */
 function getMiActId(bodyStr) {
     if (!bodyStr || !bodyStr.includes("infinite-task")) return null;
     try {
@@ -90,15 +78,15 @@ function getMiActId(bodyStr) {
     return null;
 }
 
-/**
- * 请求包装器 (适配 Loon 的 $httpClient 转换为 Promise)
- */
 function request(method, reqUrl, reqHeaders = {}, reqBody = null) {
     return new Promise((resolve, reject) => {
         const req = { url: reqUrl, headers: reqHeaders, body: reqBody };
         const fn = (method === "POST" || method === "PUT") ? $httpClient[method.toLowerCase()] : $httpClient.get;
         fn(req, (error, response, data) => {
-            if (error) return reject(error);
+            if (error) {
+                console.log("HTTP网络请求错误: " + JSON.stringify(error));
+                return reject(error);
+            }
             try {
                 resolve(JSON.parse(data));
             } catch (e) {
@@ -110,50 +98,66 @@ function request(method, reqUrl, reqHeaders = {}, reqBody = null) {
 
 /**
  * 核心对接逻辑：推送至呆呆面板
- * 增加了 remarkText 参数，接收动态的备注信息
  */
 async function pushToDaiPanel(envName, envValue, remarkText) {
     try {
-        // 1. 鉴权获取 Token
-        const tokenRes = await request("POST", `${HOST}/api/open-api/token`, {
-            "Content-Type": "application/json"
-        }, JSON.stringify({ appKey: APP_KEY, appSecret: APP_SECRET }));
+        console.log(`[调试] 正在向面板获取 Token... Host: ${HOST}`);
         
-        const token = tokenRes.data?.token || tokenRes.token;
-        if (!token) throw new Error("获取 Open API Token 失败，请检查密钥或面板状态");
+        // 尝试 1：严格按照文档大小写将参数放入 Body
+        let tokenRes = await request("POST", `${HOST}/api/open-api/token`, {
+            "Content-Type": "application/json"
+        }, JSON.stringify({ AppKey: APP_KEY, AppSecret: APP_SECRET }));
+        
+        console.log(`[调试] 获取 Token 接口返回: ${JSON.stringify(tokenRes)}`);
+
+        let token = tokenRes.data?.token || tokenRes.token || tokenRes.access_token || tokenRes.data?.access_token;
+        
+        // 尝试 2：如果 Body 不行，有可能是 Query 传参（仿青龙）
+        if (!token) {
+            console.log(`[调试] Body传参未能获取Token，尝试Query传参...`);
+            tokenRes = await request("POST", `${HOST}/api/open-api/token?client_id=${APP_KEY}&client_secret=${APP_SECRET}`, {
+                "Content-Type": "application/json"
+            });
+            console.log(`[调试] Query获取Token 接口返回: ${JSON.stringify(tokenRes)}`);
+            token = tokenRes.data?.token || tokenRes.token || tokenRes.access_token || tokenRes.data?.access_token;
+        }
+
+        if (!token) {
+            throw new Error("两套参数均未能提取到 Token，请查看上方 [调试] 日志。");
+        }
+
+        console.log(`[调试] 成功获取 Token! 准备操作环境变量...`);
 
         const authHeaders = {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
         };
 
-        // 2. 搜索变量是否已存在
+        // 搜索变量是否已存在
         const searchRes = await request("GET", `${HOST}/api/envs?searchValue=${envName}`, authHeaders);
         const envs = searchRes.data || [];
         const existEnv = envs.find(e => e.name === envName);
 
-        // 3. 执行更新或新增
+        // 执行更新或新增
         if (existEnv) {
-            // 更新 PUT /api/envs/:id
             await request("PUT", `${HOST}/api/envs/${existEnv.id}`, authHeaders, JSON.stringify({
                 name: envName,
                 value: envValue,
                 remarks: remarkText 
             }));
             console.log(`✅ 呆呆面板: [${envName}] 更新成功`);
-            $notification.post("🤖 面板变量自动同步", `✅ ${envName} 更新成功`, `已覆盖并备注: ${remarkText}`);
+            $notification.post("🤖 面板自动同步", `✅ ${envName} 更新成功`, `已覆盖并备注: ${remarkText}`);
         } else {
-            // 新建 POST /api/envs
             await request("POST", `${HOST}/api/envs`, authHeaders, JSON.stringify([{
                 name: envName,
                 value: envValue,
                 remarks: remarkText
             }]));
             console.log(`✅ 呆呆面板: [${envName}] 新增成功`);
-            $notification.post("🤖 面板变量自动同步", `✅ ${envName} 新建成功`, `已创建并备注: ${remarkText}`);
+            $notification.post("🤖 面板自动同步", `✅ ${envName} 新建成功`, `已创建并备注: ${remarkText}`);
         }
     } catch (error) {
         console.log(`❌ 推送至面板失败: ${error}`);
-        $notification.post("🤖 面板变量同步失败", `❌ ${envName}`, String(error));
+        $notification.post("🤖 面板同步失败", `❌ ${envName}`, String(error));
     }
 }
