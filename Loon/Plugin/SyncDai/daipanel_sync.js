@@ -12,7 +12,6 @@ const APP_SECRET = "32fbaf8f175678d0845cbb1ff85b1d50840917a26fcb158a637d327328f8
 const url = $request.url;
 const body = $request.body || "";
 const headers = $request.headers;
-// 兼容首字母大写和小写的 cookie
 const cookie = headers["Cookie"] || headers["cookie"] || "";
 
 (async () => {
@@ -43,7 +42,6 @@ const cookie = headers["Cookie"] || headers["cookie"] || "";
         }
     }
 })().finally(() => {
-    // 必须调用 $done 放行原始请求
     $done({});
 });
 
@@ -83,10 +81,7 @@ function request(method, reqUrl, reqHeaders = {}, reqBody = null) {
         const req = { url: reqUrl, headers: reqHeaders, body: reqBody };
         const fn = (method === "POST" || method === "PUT") ? $httpClient[method.toLowerCase()] : $httpClient.get;
         fn(req, (error, response, data) => {
-            if (error) {
-                console.log("HTTP网络请求错误: " + JSON.stringify(error));
-                return reject(error);
-            }
+            if (error) return reject(error);
             try {
                 resolve(JSON.parse(data));
             } catch (e) {
@@ -101,44 +96,42 @@ function request(method, reqUrl, reqHeaders = {}, reqBody = null) {
  */
 async function pushToDaiPanel(envName, envValue, remarkText) {
     try {
-        console.log(`[调试] 正在向面板获取 Token... Host: ${HOST}`);
+        // 1. 鉴权获取 Token (同时兼容 Query参数 和 Body参数 格式)
+        const tokenPayload = {
+            appKey: APP_KEY,
+            appSecret: APP_SECRET,
+            client_id: APP_KEY,
+            client_secret: APP_SECRET
+        };
         
-        // 尝试 1：严格按照文档大小写将参数放入 Body
-        let tokenRes = await request("POST", `${HOST}/api/open-api/token`, {
-            "Content-Type": "application/json"
-        }, JSON.stringify({ AppKey: APP_KEY, AppSecret: APP_SECRET }));
+        // 发送 POST 请求获取 Token
+        const tokenRes = await request(
+            "POST", 
+            `${HOST}/api/open-api/token?appKey=${APP_KEY}&appSecret=${APP_SECRET}`, 
+            { "Content-Type": "application/json" }, 
+            JSON.stringify(tokenPayload)
+        );
         
-        console.log(`[调试] 获取 Token 接口返回: ${JSON.stringify(tokenRes)}`);
-
-        let token = tokenRes.data?.token || tokenRes.token || tokenRes.access_token || tokenRes.data?.access_token;
+        console.log(`[调试] Token 接口完整返回: ${JSON.stringify(tokenRes)}`);
         
-        // 尝试 2：如果 Body 不行，有可能是 Query 传参（仿青龙）
+        // 兼容解析所有可能的 Token 字段名 (明确匹配文档中的 access_token)
+        const token = tokenRes?.data?.access_token || tokenRes?.data?.token || tokenRes?.access_token || tokenRes?.token;
+        
         if (!token) {
-            console.log(`[调试] Body传参未能获取Token，尝试Query传参...`);
-            tokenRes = await request("POST", `${HOST}/api/open-api/token?client_id=${APP_KEY}&client_secret=${APP_SECRET}`, {
-                "Content-Type": "application/json"
-            });
-            console.log(`[调试] Query获取Token 接口返回: ${JSON.stringify(tokenRes)}`);
-            token = tokenRes.data?.token || tokenRes.token || tokenRes.access_token || tokenRes.data?.access_token;
+            throw new Error(`Token 获取失败，服务器返回信息: ${JSON.stringify(tokenRes)}`);
         }
-
-        if (!token) {
-            throw new Error("两套参数均未能提取到 Token，请查看上方 [调试] 日志。");
-        }
-
-        console.log(`[调试] 成功获取 Token! 准备操作环境变量...`);
 
         const authHeaders = {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
         };
 
-        // 搜索变量是否已存在
+        // 2. 搜索变量是否已存在
         const searchRes = await request("GET", `${HOST}/api/envs?searchValue=${envName}`, authHeaders);
         const envs = searchRes.data || [];
         const existEnv = envs.find(e => e.name === envName);
 
-        // 执行更新或新增
+        // 3. 执行更新或新增
         if (existEnv) {
             await request("PUT", `${HOST}/api/envs/${existEnv.id}`, authHeaders, JSON.stringify({
                 name: envName,
@@ -146,7 +139,7 @@ async function pushToDaiPanel(envName, envValue, remarkText) {
                 remarks: remarkText 
             }));
             console.log(`✅ 呆呆面板: [${envName}] 更新成功`);
-            $notification.post("🤖 面板自动同步", `✅ ${envName} 更新成功`, `已覆盖并备注: ${remarkText}`);
+            $notification.post("🤖 面板变量自动同步", `✅ ${envName} 更新成功`, `已覆盖并备注: ${remarkText}`);
         } else {
             await request("POST", `${HOST}/api/envs`, authHeaders, JSON.stringify([{
                 name: envName,
@@ -154,10 +147,10 @@ async function pushToDaiPanel(envName, envValue, remarkText) {
                 remarks: remarkText
             }]));
             console.log(`✅ 呆呆面板: [${envName}] 新增成功`);
-            $notification.post("🤖 面板自动同步", `✅ ${envName} 新建成功`, `已创建并备注: ${remarkText}`);
+            $notification.post("🤖 面板变量自动同步", `✅ ${envName} 新建成功`, `已创建并备注: ${remarkText}`);
         }
     } catch (error) {
         console.log(`❌ 推送至面板失败: ${error}`);
-        $notification.post("🤖 面板同步失败", `❌ ${envName}`, String(error));
+        $notification.post("🤖 面板变量同步失败", `❌ ${envName}`, String(error));
     }
 }
