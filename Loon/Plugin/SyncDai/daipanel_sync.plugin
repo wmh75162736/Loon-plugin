@@ -1,0 +1,12 @@
+#!name=呆呆面板自动同步
+#!desc=自动监听 WPS / 小米抽奖 / 腾讯视频，截取 Cookie 并无感推送到呆呆面板
+#!author=ChatGPT
+#!icon=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Auto_Sync.png
+#!date=2026-07-14
+
+[MITM]
+hostname = pbaccess.video.qq.com, shop-api.retail.mi.com, personal-act.wps.cn
+
+[Script]
+# 一键监听抓取推送至呆呆面板
+http-request ^https:\/\/(pbaccess\.video\.qq\.com|shop-api\.retail\.mi\.com\/mtop\/navi\/venue\/batch|personal-act\.wps\.cn\/activity-rubik\/activity\/page_info) script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/SyncDai/daipanel_sync.js, requires-body=true, tag=呆呆面板自动同步
