@@ -11,9 +11,8 @@ const cookie = headers["Cookie"] || headers["cookie"] || "";
         const wpsSid = getCookieVal(cookie, "wps_sid");
         if (wpsSid) {
             if (checkFreq("WPS_SID")) return;
-            console.log("[WPS业务] 🎉 成功提取 WPS_SID，向核心模块派发同步任务");
+            console.log("[WPS业务] 🎉 成功提取 WPS_SID，往总线注入任务并呼叫核心底座");
 
-            // 1. 组装标准规范数据，推入数据总线
             const syncPayload = {
                 envName: "WPS_SID",
                 envValue: wpsSid,
@@ -21,7 +20,7 @@ const cookie = headers["Cookie"] || headers["cookie"] || "";
             };
             $persistentStore.write(JSON.stringify(syncPayload), "DAIPANEL_SYNC_QUEUE");
 
-            // 2. 核心魔法：直接拉起核心同步脚本执行
+            // 通过注册的别名唤醒核心同步底座
             $script.execute("daipanel_sync_core.js");
         }
     }
