@@ -55,16 +55,16 @@ async function pushToDaiPanel(envName, envValue, remarkText) {
     try {
         // 1. 获取 Token
         const tokenRes = await request("POST", `${HOST}/api/open-api/token`, { "Content-Type": "application/json" }, JSON.stringify({
-            app_key: APP_KEY,
-            app_secret: APP_SECRET
+            appKey: APP_KEY,
+            appSecret: APP_SECRET
         }));
-        const token = tokenRes?.data?.access_token || tokenRes?.access_token;
+        const token = tokenRes.data?.token || tokenRes.token;
         if (!token) throw new Error(`Token 获取失败: ${JSON.stringify(tokenRes)}`);
 
         const authHeaders = { "Content-Type": "application/json", "Authorization": `Bearer ${token}` };
 
         // 2. 搜索已有变量
-        const searchRes = await request("GET", `${HOST}/api/envs?keyword=${envName}&page_size=100`, authHeaders);
+        const searchRes = await request("GET", `${HOST}/api/envs?searchValue=${envName}`, authHeaders);
         const existEnv = (searchRes.data || []).find(e => e.name === envName);
 
         // 3. 覆盖更新或直接新建
@@ -74,9 +74,11 @@ async function pushToDaiPanel(envName, envValue, remarkText) {
             }));
             $notification.post("🤖 面板变量自动同步", `✅ ${envName} 更新成功`, `已覆盖并备注: ${remarkText}`);
         } else {
-            await request("POST", `${HOST}/api/envs`, authHeaders, JSON.stringify({
-                name: envName, value: envValue, remarks: remarkText
-            }));
+            await request("POST", `${HOST}/api/envs`, authHeaders, JSON.stringify([{
+                name: envName,
+                value: envValue,
+                remarks: remarkText
+            }]));
             $notification.post("🤖 面板变量自动同步", `✅ ${envName} 新建成功`, `已创建并备注: ${remarkText}`);
         }
     } catch (error) {
