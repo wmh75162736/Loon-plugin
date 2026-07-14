@@ -28,7 +28,7 @@ const cookie = headers["Cookie"] || headers["cookie"] || "";
             $persistentStore.write(JSON.stringify(syncPayload), "DAIPANEL_SYNC_QUEUE");
 
             // 2. 唤醒核心同步脚本
-            $script.execute("daipanel_sync_core.js");
+            $script.execute("https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/SyncDai/daipanel_sync_core.js");
         }
     }
 })();
