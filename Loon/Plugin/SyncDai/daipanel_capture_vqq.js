@@ -4,17 +4,14 @@
 
 const url = $request.url;
 const headers = $request.headers;
-// 兼容首字母大写和小写的 cookie
 const cookie = headers["Cookie"] || headers["cookie"] || "";
 
 (() => {
     if (url.includes("pbaccess.video.qq.com")) {
-        // 确保包含关键的刷新令牌才视为有效 Cookie
         if (cookie.includes("vqq_refresh_token=")) {
             if (checkFreq("TENV_COOKIE")) return;
-            console.log("[腾讯视频业务] 🎉 成功提取腾讯视频 Cookie，向核心模块派发同步任务");
+            console.log("[腾讯视频业务] 🎉 成功提取 Cookie，往总线注入任务并呼叫核心底座");
 
-            // 1. 组装标准规范数据，推入数据总线
             const syncPayload = {
                 envName: "TENV_COOKIE",
                 envValue: cookie,
@@ -22,7 +19,7 @@ const cookie = headers["Cookie"] || headers["cookie"] || "";
             };
             $persistentStore.write(JSON.stringify(syncPayload), "DAIPANEL_SYNC_QUEUE");
 
-            // 2. 核心魔法：直接拉起你之前创建的核心同步脚本执行
+            // 执行我们在插件中通过 tag 注册的全局别名，即使是远程运行，Loon 也会在此处正确唤醒
             $script.execute("daipanel_sync_core.js");
         }
     }
