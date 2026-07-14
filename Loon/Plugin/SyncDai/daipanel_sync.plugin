@@ -9,7 +9,7 @@ hostname = pbaccess.video.qq.com, shop-api.retail.mi.com, personal-act.wps.cn, h
 [Script]
 # --- 业务拦截层 (自动合并引入同步库) ---
 
-# 北京移动抓取  (拦截 getSignIn 和 doPrize 请求，分两步合并推送)
+# 北京移动抓取 v3 (拦截 getSignIn 和 doPrize 请求，分两步合并推送)
 http-request ^https:\/\/h5\.bj\.10086\.cn\/ActSignIn2023\/(getSignIn|doPrize)\/JT\/ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/SyncDai/daipanel_cmccbj.js, tag=北京移动抓取
 
 # 腾讯视频抓取
