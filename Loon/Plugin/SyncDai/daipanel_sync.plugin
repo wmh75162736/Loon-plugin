@@ -4,10 +4,13 @@
 #!date=2026-07-14
 
 [MITM]
-hostname = pbaccess.video.qq.com, shop-api.retail.mi.com, personal-act.wps.cn
+hostname = pbaccess.video.qq.com, shop-api.retail.mi.com, personal-act.wps.cn, h5.bj.10086.cn
 
 [Script]
 # --- 业务拦截层 (自动合并引入同步库) ---
+
+# 北京移动抓取 (拦截签到+领奖请求，提取 token 和 constid)
+http-request ^https:\/\/h5\.bj\.10086\.cn\/ActSignIn2023\/(getSignIn|doPrize)\/JT\/ script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/SyncDai/daipanel_cmccbj.js, requires-by-js=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/SyncDai/daipanel_sync_core.js, tag=北京移动抓取
 
 # 腾讯视频抓取
 http-request ^https:\/\/pbaccess\.video\.qq\.com script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/SyncDai/daipanel_capture_vqq.js, requires-body=false, requires-by-js=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/SyncDai/daipanel_sync_core.js, tag=腾讯视频抓取
