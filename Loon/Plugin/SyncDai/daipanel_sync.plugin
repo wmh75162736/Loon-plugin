@@ -1,5 +1,5 @@
 #!name=呆呆面板模块化自适应同步插件
-#!desc=自动监听 WPS / 小米抽奖 / 腾讯视频，截取 Cookie 并无感推送到呆呆面板。采用发布-订阅架构，后续新增 App 仅需扩展本地 capture 业务脚本，无需更改同步底座。
+#!desc=解耦重构版：包含 腾讯视频、小米商城、WPS。采用发布-订阅架构，后续新增 App 仅需扩展本地 capture 业务脚本，无需更改同步底座。
 #!icon=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Auto_Sync.png
 #!date=2026-07-14
 #!option name=HOST|default=https://dai.atiny.fun:2|desc=呆呆面板服务器地址
@@ -10,5 +10,16 @@
 hostname = pbaccess.video.qq.com, shop-api.retail.mi.com, personal-act.wps.cn
 
 [Script]
-# 一键监听抓取推送至呆呆面板
-http-request ^https:\/\/(pbaccess\.video\.qq\.com|shop-api\.retail\.mi\.com\/mtop\/navi\/venue\/batch|personal-act\.wps\.cn\/activity-rubik\/activity\/page_info) script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/SyncDai/daipanel_sync.js, requires-body=true, tag=呆呆面板自动同步
+# --- 业务拦截层 ---
+# 腾讯视频抓取
+http-request ^https:\/\/pbaccess\.video\.qq\.com script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/SyncDai/daipanel_capture_vqq.js, requires-body=true, tag=腾讯视频抓取模块
+
+# 小米抽奖抓取
+http-request ^https:\/\/shop-api\.retail\.mi\.com\/mtop\/navi\/venue\/batch script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/SyncDai/daipanel_capture_mi.js, requires-body=true, tag=小米抓取模块
+
+# WPS抓取
+http-request ^https:\/\/personal-act\.wps\.cn\/activity-rubik\/activity\/page_info script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/SyncDai/daipanel_capture_wps.js, requires-body=true, tag=WPS抓取模块
+
+
+# --- 核心同步底座 (被动脚本，声明给 $script.execute 跨脚本调用使用) ---
+generic script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/SyncDai/daipanel_sync_core.js, tag=daipanel_sync_core.js
