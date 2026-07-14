@@ -1,26 +1,35 @@
 /**
- * @name 小米抽奖抓取模块 (异步守卫版)
+ * @name 小米抽奖抓取模块 (全量 JSON 防风控版)
  */
 
 const url = $request.url;
 const body = $request.body || "";
 const headers = $request.headers;
-const cookie = headers["Cookie"] || headers["cookie"] || "";
 
 (async () => {
+    // 拦截指定的抽奖批量请求接口
     if (url.includes("shop-api.retail.mi.com/mtop/navi/venue/batch")) {
-        const actId = getMiActId(body);
-        const mishopClientId = headers["mishop-client-id"] || headers["MiShop-Client-Id"] || "";
-        
-        if (actId && cookie) {
+        // 确保这是一个有效的任务请求报文
+        if (body.includes("infinite-task") && body.includes("sign")) {
             if (!checkFreq("MI_LOTTERY")) {
-                console.log("[小米商城] 提取成功，后台加载核心库...");
-                const envValue = mishopClientId ? `${actId}#${cookie}#${mishopClientId}` : `${actId}#${cookie}`;
-                await loadAndPush("MI_LOTTERY", envValue, "小米抽奖自动同步");
+                console.log("[小米商城] 🚀 提取全量真实报文成功，后台加载核心库...");
+                
+                // 💎 核心解法：直接将整个真实的请求上下文打包为完整的 JSON
+                const fullData = {
+                    url: url,
+                    headers: headers,
+                    body: body
+                };
+                
+                // 将 JSON 对象转为字符串，作为面板的最终环境变量值
+                const envValue = JSON.stringify(fullData);
+                
+                await loadAndPush("MI_LOTTERY", envValue, "小米抽奖全量自动同步");
             }
         }
     }
 })().finally(() => {
+    // 立即放行原始请求，不卡顿 APP
     $done({});
 });
 
@@ -38,20 +47,6 @@ async function loadAndPush(name, val, remark) {
             } else { console.log("核心下载失败: " + err); resolve(); }
         });
     });
-}
-
-function getMiActId(bodyStr) {
-    if (!bodyStr || !bodyStr.includes("infinite-task")) return null;
-    try {
-        const parsed = JSON.parse(bodyStr);
-        const list = parsed.query_list || (Array.isArray(parsed) && parsed[1] && parsed[1].query_list) || [];
-        for (const item of list) {
-            if (!item || item.resolver !== "infinite-task") continue;
-            const param = typeof item.parameter === "string" ? JSON.parse(item.parameter) : item.parameter;
-            if (param && param.actId) return param.actId;
-        }
-    } catch (e) {}
-    return null;
 }
 
 function checkFreq(key) {
