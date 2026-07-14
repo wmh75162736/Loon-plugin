@@ -1,14 +1,17 @@
 /**
- * @name 北京移动抓取模块 v1 (自动合并推送版)
+ * @name 北京移动抓取模块 v3 (自动合并推送版)
  *
  * 拦截北京移动 APP 签到请求，分两步抓取 token + constid，
  * 当两者齐全后自动推送至呆呆面板。
+ *
+ * v3 更新 (2026-07-14):
+ *   - 新增: getSignIn 阶段增加轻量通知，提示用户点击签到完成后续同步
  *
  * 抓取流程:
  *   1. 打开 APP 进入签到页 -> getSignIn 请求, 脚本提取并缓存 token
  *   2. 点击签到 -> doPrize 请求, 脚本提取 constid, 与缓存 token 合并推送
  *
- * @version v1
+ * @version v3
  * @updated 2026-07-14
  */
 
@@ -28,6 +31,8 @@ const STORE_KEY_TIME = "LAST_PUSH_CMCCBJ";
         if (url.includes("/getSignIn/")) {
             console.log("[北京移动] 抓到 getSignIn 请求, 缓存 token");
             $persistentStore.write(decodeURIComponent(token), STORE_KEY_TOKEN);
+            // 轻量通知：提示用户点击签到按钮完成后续同步
+            $notification.post("🤖 面板变量自动同步", "ℹ️ 北京移动 token 已缓存", "请点击签到按钮，完成 constid 抓取与推送");
             return;
         }
 
