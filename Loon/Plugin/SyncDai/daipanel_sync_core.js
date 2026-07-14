@@ -3,9 +3,9 @@
  * @desc 仅负责处理与呆呆面板 Open API 的交互，由其他业务抓包脚本唤醒
  */
 
-const HOST = "https://dai.atiny.fun:2"; 
-const APP_KEY = "b758c23de0937a80e2849da5f2457875";
-const APP_SECRET = "32fbaf8f175678d0845cbb1ff85b1d50840917a26fcb158a637d327328f8a939";
+const HOST = $config.get("HOST") || "https://dai.atiny.fun:2";
+const APP_KEY = $config.get("APP_KEY") || "b758c23de0937a80e2849da5f2457875";
+const APP_SECRET = $config.get("APP_SECRET") || "32fbaf8f175678d0845cbb1ff85b1d50840917a26fcb158a637d327328f8a939";
 
 (async () => {
     // 从数据总线读取待同步的数据

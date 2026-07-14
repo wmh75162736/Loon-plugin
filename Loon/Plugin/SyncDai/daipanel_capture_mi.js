@@ -16,7 +16,7 @@ const cookie = headers["Cookie"] || headers["cookie"] || "";
             if (checkFreq("MI_LOTTERY")) return;
             console.log("[小米业务] 🎉 成功提取数据，向核心模块派发同步任务");
 
-            // 拼装符合你青龙 Python 脚本期望的格式
+            // 拼装符合呆呆面板脚本期望的格式
             const envValue = mishopClientId ? `${actId}#${cookie}#${mishopClientId}` : `${actId}#${cookie}`;
             
             // 1. 写入数据总线
@@ -28,7 +28,7 @@ const cookie = headers["Cookie"] || headers["cookie"] || "";
             $persistentStore.write(JSON.stringify(syncPayload), "DAIPANEL_SYNC_QUEUE");
 
             // 2. 唤醒核心同步脚本
-            $script.execute("https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/SyncDai/daipanel_sync_core.js");
+            $script.execute("daipanel_sync_core.js");
         }
     }
 })();
