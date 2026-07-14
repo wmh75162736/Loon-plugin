@@ -1,5 +1,5 @@
 /**
- * @name 小米抽奖抓取模块
+ * @name 小米抽奖抓取模块 (异步守卫版)
  */
 
 const url = $request.url;
@@ -13,15 +13,32 @@ const cookie = headers["Cookie"] || headers["cookie"] || "";
         const mishopClientId = headers["mishop-client-id"] || headers["MiShop-Client-Id"] || "";
         
         if (actId && cookie) {
-            if (checkFreq("MI_LOTTERY")) return;
-            console.log("[小米商城] 成功提取数据，准备推送");
-            const envValue = mishopClientId ? `${actId}#${cookie}#${mishopClientId}` : `${actId}#${cookie}`;
-            await pushToDaiPanel("MI_LOTTERY", envValue, "小米抽奖自动同步");
+            if (!checkFreq("MI_LOTTERY")) {
+                console.log("[小米商城] 提取成功，后台加载核心库...");
+                const envValue = mishopClientId ? `${actId}#${cookie}#${mishopClientId}` : `${actId}#${cookie}`;
+                await loadAndPush("MI_LOTTERY", envValue, "小米抽奖自动同步");
+            }
         }
     }
 })().finally(() => {
     $done({});
 });
+
+async function loadAndPush(name, val, remark) {
+    return new Promise((resolve) => {
+        const coreUrl = `https://raw.githubusercontent.com/wmh75162736/Loon-plugin/refs/heads/main/Loon/Plugin/SyncDai/daipanel_sync_core.js?t=${Date.now()}`;
+        $httpClient.get(coreUrl, (err, resp, data) => {
+            if (!err && data) {
+                try {
+                    eval(data);
+                    if (typeof globalThis.pushToDaiPanel === 'function') {
+                        globalThis.pushToDaiPanel(name, val, remark).finally(resolve);
+                    } else resolve();
+                } catch (e) { console.log("核心执行失败: " + e); resolve(); }
+            } else { console.log("核心下载失败: " + err); resolve(); }
+        });
+    });
+}
 
 function getMiActId(bodyStr) {
     if (!bodyStr || !bodyStr.includes("infinite-task")) return null;
