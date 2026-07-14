@@ -7,6 +7,15 @@
 - **更新日期**: 2026-07-14
 - **插件图标**: ![Auto_Sync](https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Auto_Sync.png)
 
+## 一键导入
+
+[点击一键导入 Loon](https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubusercontent.com%2Fwmh75162736%2FLoon-plugin%2Fmain%2FLoon%2FPlugin%2FSyncDai%2Fdaipanel_sync.plugin)
+
+Raw 插件地址：
+```text
+https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/SyncDai/daipanel_sync.plugin
+```
+
 ## 功能简介
 
 本插件用于自动化同步多个应用的账号数据到呆呆面板，采用模块化设计，支持灵活扩展。
