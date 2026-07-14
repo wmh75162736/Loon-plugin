@@ -9,14 +9,14 @@ hostname = pbaccess.video.qq.com, shop-api.retail.mi.com, personal-act.wps.cn
 [Script]
 # --- 业务拦截层 ---
 # 腾讯视频抓取
-http-request ^https:\/\/pbaccess\.video\.qq\.com script-path=daipanel_capture_vqq.js, requires-body=false, tag=腾讯视频抓取模块
+http-request ^https:\/\/pbaccess\.video\.qq\.com script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/SyncDai/daipanel_capture_vqq.js, requires-body=false, tag=腾讯视频抓取模块
 
 # 小米抽奖抓取
-http-request ^https:\/\/shop-api\.retail\.mi\.com\/mtop\/navi\/venue\/batch script-path=daipanel_capture_mi.js, requires-body=true, tag=小米抓取模块
+http-request ^https:\/\/shop-api\.retail\.mi\.com\/mtop\/navi\/venue\/batch script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/SyncDai/daipanel_capture_mi.js, requires-body=true, tag=小米抓取模块
 
 # WPS抓取
-http-request ^https:\/\/personal-act\.wps\.cn\/activity-rubik\/activity\/page_info script-path=daipanel_capture_wps.js, requires-body=false, tag=WPS抓取模块
+http-request ^https:\/\/personal-act\.wps\.cn\/activity-rubik\/activity\/page_info script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/SyncDai/daipanel_capture_wps.js, requires-body=false, tag=WPS抓取模块
 
 
 # --- 核心同步底座 (被动脚本，声明给 $script.execute 跨脚本调用使用) ---
-generic script-path=daipanel_sync_core.js, tag=daipanel_sync_core.js
+generic script-path=https://raw.githubusercontent.com/wmh75162736/Loon-plugin/main/Loon/Plugin/SyncDai/daipanel_sync_core.js, tag=核心同步底座
